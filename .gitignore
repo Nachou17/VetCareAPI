@@ -3,12 +3,42 @@
 ##
 ## Get latest from https://github.com/github/gitignore/blob/master/VisualStudio.gitignore
 
-# Archivos de configuración
-appsettings.json
-appsettings.*.json
+# ==========================================
+# Secretos y Entornos (Backend & Frontend)
+# ==========================================
+VeterinariaAPI/appsettings.json
+VeterinariaAPI/appsettings.*.json
+**/appsettings.json
+**/appsettings.*.json
+!VeterinariaAPI/appsettings.example.json
+!**/appsettings.example.json
 
-appsettings2.json
-appsettings2.*.json
+veterinaria-client/.env
+veterinaria-client/.env.*
+veterinaria-client/.env*.local
+**/.env
+**/.env.*
+**/*.local
+!veterinaria-client/.env.example
+!**/.env.example
+
+# ==========================================
+# Frontend Node / Vite / Playwright
+# ==========================================
+node_modules/
+**/node_modules/
+dist/
+**/dist/
+dist-ssr/
+**/dist-ssr/
+test-results/
+**/test-results/
+playwright-report/
+**/playwright-report/
+blob-report/
+**/blob-report/
+.playwright/
+**/.playwright/
 # User-specific files
 *.rsuser
 *.suo

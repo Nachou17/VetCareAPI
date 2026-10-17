@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using VeterinariaAPI.Extensions;
 using VeterinariaAPI.Models;
 using VeterinariaAPI.Repositories;
@@ -16,6 +16,13 @@ namespace VeterinariaAPI.Endpoints
             {
                 var listaPacientes = await repo.ObtenerTodosAsync();
                 return Results.Ok(listaPacientes);
+            }).RequireAuthorization(policy => policy.RequireRole("Administrador", "Veterinario", "Recepcionista"));
+
+            // API para obtener un paciente por ID
+            pacientes.MapGet("/{id:int}", async (int id, IRepository<Paciente> repo) =>
+            {
+                var paciente = await repo.ObtenerPorIdAsync(id);
+                return paciente is null ? Results.NotFound() : Results.Ok(paciente);
             }).RequireAuthorization(policy => policy.RequireRole("Administrador", "Veterinario", "Recepcionista"));
 
             // API para crear un paciente
