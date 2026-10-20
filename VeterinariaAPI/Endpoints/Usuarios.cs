@@ -16,7 +16,7 @@ namespace VeterinariaAPI.Endpoints
         {
             var usuarios = app.MapGroup("/api/v1/usuarios").WithTags("Usuarios (v1)");
 
-            // API para listar usuarios
+            // API para listar usuarios (solo Administrador)
             usuarios.MapGet("/", async (IUsuarioRepository repo) =>
             {
                 var listaUsuarios = await repo.ObtenerTodosAsync();
@@ -30,9 +30,9 @@ namespace VeterinariaAPI.Endpoints
                 });
 
                 return Results.Ok(respuesta);
-            });
+            }).RequireAuthorization(policy => policy.RequireRole("Administrador"));
 
-            // API para registrar/crear un usuario (Protegido con AuthPolicy)
+            // API para registrar/crear un usuario (Protegido con AuthPolicy - solo Administrador)
             usuarios.MapPost("/register", async (UsuarioRegisterDto dto, IUsuarioRepository repo, AuthService auth) =>
             {
                 // Validar DTO antes de procesar
@@ -61,9 +61,10 @@ namespace VeterinariaAPI.Endpoints
                     nuevoUsuario.Email,
                     nuevoUsuario.RolId
                 });
-            }).RequireRateLimiting("AuthPolicy");
+            }).RequireRateLimiting("AuthPolicy")
+              .RequireAuthorization(policy => policy.RequireRole("Administrador"));
 
-            // API para Iniciar Sesión (Login) y obtener JWT Token (Protegido con AuthPolicy)
+            // API para Iniciar Sesión (Login) y obtener JWT Token (Protegido con AuthPolicy - público)
             usuarios.MapPost("/login", async (LoginRequest login, IUsuarioRepository repo, AuthService auth, IConfiguration config) =>
             {
                 // Validar credenciales de entrada
@@ -105,7 +106,7 @@ namespace VeterinariaAPI.Endpoints
                 return Results.Ok(new { token = new JwtSecurityTokenHandler().WriteToken(token) });
             }).RequireRateLimiting("AuthPolicy");
 
-            // API para eliminar usuario por ID
+            // API para eliminar usuario por ID (solo Administrador)
             usuarios.MapDelete("/{id:int}", async (int id, IUsuarioRepository repo) =>
             {
                 var usuario = await repo.ObtenerPorIdAsync(id);
@@ -115,7 +116,7 @@ namespace VeterinariaAPI.Endpoints
                 await repo.GuardarCambiosAsync();
 
                 return Results.NoContent();
-            }).RequireAuthorization(policy => policy.RequireRole("Administrador", "Veterinario"));
+            }).RequireAuthorization(policy => policy.RequireRole("Administrador"));
         }
 
         // DTOs estructurados con el prefijo 'property:' para la correcta validación por reflexión
