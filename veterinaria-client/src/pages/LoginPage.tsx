@@ -13,9 +13,8 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useNavigate, useLocation } from 'react-router-dom'
+import axios from 'axios'
 import { useAuth } from '../context/AuthContext'
-import type { AxiosError } from 'axios'
-import type { ApiValidationError } from '../types'
 
 const loginSchema = z.object({
   email: z.string().min(1, 'El correo es obligatorio.').email('Ingresa un correo válido.'),
@@ -38,6 +37,7 @@ export function LoginPage() {
     register,
     handleSubmit,
     setError,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<LoginFormValues>({ resolver: zodResolver(loginSchema) })
 
@@ -55,12 +55,22 @@ export function LoginPage() {
     try {
       await login(values)
       navigate(from, { replace: true })
-    } catch (err) {
-      const axiosErr = err as AxiosError<ApiValidationError>
-      if (axiosErr.response?.status === 401) {
-        setError('root', { message: 'Correo o contraseña incorrectos.' })
+    } catch (err: unknown) {
+      if (axios.isAxiosError(err)) {
+        const status = err.response?.status
+        if (status === 401) {
+          setError('root', { message: 'Correo o contraseña incorrectos.' })
+        } else if (status === 429) {
+          setError('root', { message: 'Demasiados intentos fallidos. Por favor, espera un momento antes de reintentar.' })
+        } else if (!err.response) {
+          setError('root', { message: 'No se pudo conectar con el servidor de la veterinaria. Verifica tu conexión.' })
+        } else {
+          setError('root', { message: 'Error al iniciar sesión. Intenta de nuevo.' })
+        }
+      } else if (err instanceof Error) {
+        setError('root', { message: err.message || 'Correo o contraseña incorrectos.' })
       } else {
-        setError('root', { message: 'Error al iniciar sesión. Intenta de nuevo.' })
+        setError('root', { message: 'Correo o contraseña incorrectos.' })
       }
     }
   }
@@ -160,6 +170,44 @@ export function LoginPage() {
             {isSubmitting ? 'Iniciando sesión…' : 'Iniciar sesión'}
           </button>
         </form>
+
+        {/* Acceso Rápido para Demostración */}
+        <div className="mt-6 pt-5 border-t border-gray-100 text-xs">
+          <p className="font-semibold text-gray-700 mb-2">Credenciales demo (clic para autocompletar):</p>
+          <div className="grid grid-cols-3 gap-1.5">
+            <button
+              type="button"
+              onClick={() => {
+                setValue('email', 'admin@veterinaria.com', { shouldValidate: true })
+                setValue('password', '123456', { shouldValidate: true })
+              }}
+              className="px-2 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded text-center font-medium transition-colors border border-blue-100"
+            >
+              Admin
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setValue('email', 'vet@veterinaria.com', { shouldValidate: true })
+                setValue('password', '123456', { shouldValidate: true })
+              }}
+              className="px-2 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded text-center font-medium transition-colors border border-emerald-100"
+            >
+              Veterinario
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setValue('email', 'recepcion@veterinaria.com', { shouldValidate: true })
+                setValue('password', '123456', { shouldValidate: true })
+              }}
+              className="px-2 py-1.5 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded text-center font-medium transition-colors border border-purple-100"
+            >
+              Recepción
+            </button>
+          </div>
+          <p className="text-[11px] text-gray-400 mt-2 text-center">Contraseña por defecto: <code className="bg-gray-100 px-1 py-0.5 rounded text-gray-700 font-mono">123456</code></p>
+        </div>
       </div>
     </div>
   )

@@ -73,21 +73,21 @@ export const handlers = [
   http.post(`${BASE_URL}/usuarios/login`, async ({ request }) => {
     const body = (await request.json()) as LoginRequest
 
-    if (body.email === 'admin@veterinaria.com' && body.password === 'Admin123!') {
+    if (body.email === 'admin@veterinaria.com' && (body.password === 'Admin123!' || body.password === '123456')) {
       return HttpResponse.json({
         token: createMockJwt(1, 'Administrador General', 'admin@veterinaria.com', 'Administrador'),
       })
     }
 
-    if (body.email === 'vet@veterinaria.com' && body.password === 'Vet123!') {
+    if (body.email === 'vet@veterinaria.com' && (body.password === 'Vet123!' || body.password === '123456')) {
       return HttpResponse.json({
         token: createMockJwt(2, 'Dra. María Veterinario', 'vet@veterinaria.com', 'Veterinario'),
       })
     }
 
-    if (body.email === 'recep@veterinaria.com' && body.password === 'Recep123!') {
+    if ((body.email === 'recep@veterinaria.com' || body.email === 'recepcion@veterinaria.com') && (body.password === 'Recep123!' || body.password === '123456')) {
       return HttpResponse.json({
-        token: createMockJwt(3, 'Pedro Recepcionista', 'recep@veterinaria.com', 'Recepcionista'),
+        token: createMockJwt(3, 'Pedro Recepcionista', 'recepcion@veterinaria.com', 'Recepcionista'),
       })
     }
 
@@ -99,7 +99,7 @@ export const handlers = [
   http.post(/\/api\/v1\/usuarios\/login/, async ({ request }) => {
     const body = (await request.json()) as LoginRequest
 
-    if (body.email === 'admin@veterinaria.com' && body.password === 'Admin123!') {
+    if (body.email === 'admin@veterinaria.com' && (body.password === 'Admin123!' || body.password === '123456')) {
       return HttpResponse.json({
         token: createMockJwt(1, 'Administrador General', 'admin@veterinaria.com', 'Administrador'),
       })

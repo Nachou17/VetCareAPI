@@ -148,11 +148,15 @@ export function ConsultasPage() {
       {mode === 'list' && (
         <>
           {isLoading && (
-            <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
-              <SkeletonRow cols={4} />
-              <SkeletonRow cols={4} />
-              <SkeletonRow cols={4} />
-              <div className="md:hidden space-y-3">
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+              <table className="min-w-full">
+                <tbody>
+                  <SkeletonRow cols={4} />
+                  <SkeletonRow cols={4} />
+                  <SkeletonRow cols={4} />
+                </tbody>
+              </table>
+              <div className="md:hidden p-4 space-y-3">
                 <SkeletonCard />
               </div>
             </div>

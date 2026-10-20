@@ -11,6 +11,9 @@ export const authService = {
   /** Inicia sesión, guarda el JWT y devuelve el payload del token. */
   async login(credentials: LoginRequest): Promise<string> {
     const { data } = await apiClient.post<LoginResponse>('/usuarios/login', credentials)
+    if (!data?.token) {
+      throw new Error('No se recibió un token de autenticación válido.')
+    }
     tokenStorage.set(data.token)
     return data.token
   },

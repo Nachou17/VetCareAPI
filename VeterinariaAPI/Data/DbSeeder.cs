@@ -43,48 +43,64 @@ namespace VeterinariaAPI.Data
                 var recepRol = await context.Roles.FirstOrDefaultAsync(r => r.Nombre == "Recepcionista") ?? await context.Roles.FirstAsync();
 
                 // 2. USUARIOS
-                if (!await context.Usuarios.AnyAsync(u => u.Email == "admin@veterinaria.com"))
+                var adminUser = await context.Usuarios.FirstOrDefaultAsync(u => u.Email == "admin@veterinaria.com");
+                if (adminUser == null)
                 {
-                    logger.LogInformation("  -> Sembrando usuario Administrador...");
-                    var adminUser = new Usuario
+                    logger.LogInformation("  -> Sembrando usuario Administrador con BCrypt...");
+                    adminUser = new Usuario
                     {
                         RolId = adminRol.Id,
                         NombreCompleto = "Dr. Carlos Mendoza (Admin)",
                         Email = "admin@veterinaria.com",
-                        PasswordHash = ""
+                        PasswordHash = BCrypt.Net.BCrypt.HashPassword("123456")
                     };
-                    adminUser.PasswordHash = auth.HashPassword(adminUser, "Admin123!");
                     await context.Usuarios.AddAsync(adminUser);
                     await context.SaveChangesAsync();
                 }
-
-                if (!await context.Usuarios.AnyAsync(u => u.Email == "vet@veterinaria.com"))
+                else
                 {
-                    logger.LogInformation("  -> Sembrando usuario Veterinario...");
-                    var vetUser = new Usuario
+                    // Asegurar que el hash esté sincronizado con BCrypt para "123456"
+                    adminUser.PasswordHash = BCrypt.Net.BCrypt.HashPassword("123456");
+                    await context.SaveChangesAsync();
+                }
+
+                var vetUser = await context.Usuarios.FirstOrDefaultAsync(u => u.Email == "vet@veterinaria.com");
+                if (vetUser == null)
+                {
+                    logger.LogInformation("  -> Sembrando usuario Veterinario con BCrypt...");
+                    vetUser = new Usuario
                     {
                         RolId = vetRol.Id,
                         NombreCompleto = "Dra. Valentina Ríos (Veterinaria)",
                         Email = "vet@veterinaria.com",
-                        PasswordHash = ""
+                        PasswordHash = BCrypt.Net.BCrypt.HashPassword("123456")
                     };
-                    vetUser.PasswordHash = auth.HashPassword(vetUser, "Vet123!");
                     await context.Usuarios.AddAsync(vetUser);
                     await context.SaveChangesAsync();
                 }
-
-                if (!await context.Usuarios.AnyAsync(u => u.Email == "recepcion@veterinaria.com"))
+                else
                 {
-                    logger.LogInformation("  -> Sembrando usuario Recepcionista...");
-                    var recepUser = new Usuario
+                    vetUser.PasswordHash = BCrypt.Net.BCrypt.HashPassword("123456");
+                    await context.SaveChangesAsync();
+                }
+
+                var recepUser = await context.Usuarios.FirstOrDefaultAsync(u => u.Email == "recepcion@veterinaria.com");
+                if (recepUser == null)
+                {
+                    logger.LogInformation("  -> Sembrando usuario Recepcionista con BCrypt...");
+                    recepUser = new Usuario
                     {
                         RolId = recepRol.Id,
                         NombreCompleto = "Martín Soto (Recepción)",
                         Email = "recepcion@veterinaria.com",
-                        PasswordHash = ""
+                        PasswordHash = BCrypt.Net.BCrypt.HashPassword("123456")
                     };
-                    recepUser.PasswordHash = auth.HashPassword(recepUser, "Recep123!");
                     await context.Usuarios.AddAsync(recepUser);
+                    await context.SaveChangesAsync();
+                }
+                else
+                {
+                    recepUser.PasswordHash = BCrypt.Net.BCrypt.HashPassword("123456");
                     await context.SaveChangesAsync();
                 }
 
