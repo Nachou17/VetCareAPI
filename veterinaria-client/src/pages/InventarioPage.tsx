@@ -126,23 +126,30 @@ export function InventarioPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="max-w-4xl mx-auto space-y-6">
       {/* Encabezado */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <header className="border-b border-gray-200 pb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Inventario y Farmacia</h1>
-          <p className="text-sm text-gray-500 mt-1">Control de medicamentos, insumos clínicos y stock disponible</p>
+          <div className="flex items-center gap-2 text-amber-700 font-semibold text-xs uppercase tracking-wider">
+            <Package size={16} aria-hidden="true" />
+            <span>Farmacia e Insumos</span>
+          </div>
+          <h1 className="text-2xl font-bold text-gray-900 tracking-tight mt-1 flex items-center gap-2.5">
+            <Package size={26} className="text-amber-600" aria-hidden="true" />
+            Inventario y Farmacia
+          </h1>
+          <p className="text-sm text-gray-600 mt-1">Control de medicamentos, insumos clínicos y stock disponible</p>
         </div>
         {canWrite && mode === 'list' && (
           <button
             onClick={() => setMode('create')}
-            className="flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium text-sm transition-colors shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 min-h-[44px]"
+            className="flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold text-sm transition-colors shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 min-h-[44px]"
           >
             <Plus size={18} aria-hidden="true" />
             Nuevo Insumo
           </button>
         )}
-      </div>
+      </header>
 
       {/* KPI Cards */}
       {mode === 'list' && (
@@ -191,28 +198,26 @@ export function InventarioPage() {
 
       {/* Formulario Crear / Editar */}
       {mode !== 'list' && (
-        <div className="max-w-2xl mx-auto py-2">
-          <section aria-labelledby="form-heading" className="bg-white rounded-xl shadow-md border border-blue-100 p-6 sm:p-8">
-            <div className="border-b border-gray-100 pb-4 mb-6">
-              <h2 id="form-heading" className="text-xl font-bold text-gray-900 flex items-center gap-2">
-                <Package className="text-amber-600" size={22} />
-                {mode === 'create' ? 'Registrar Nuevo Insumo / Medicamento' : `Modificar Insumo #${editing?.id}`}
-              </h2>
-              <p className="text-xs text-gray-500 mt-1">
-                Control de inventario, existencias y precio de venta unitario.
-              </p>
-            </div>
-            <InsumoForm
-              initial={editing}
-              onSubmit={mode === 'create' ? handleCreate : handleUpdate}
-              onCancel={() => {
-                setMode('list')
-                setEditing(undefined)
-              }}
-              isSubmitting={createMutation.isPending || updateMutation.isPending}
-            />
-          </section>
-        </div>
+        <section aria-labelledby="form-heading" className="bg-white rounded-xl shadow-lg border border-slate-200/80 p-6 sm:p-8">
+          <div className="border-b border-gray-100 pb-4 mb-6">
+            <h2 id="form-heading" className="text-xl font-bold text-gray-900 flex items-center gap-2">
+              <Package className="text-amber-600" size={22} />
+              {mode === 'create' ? 'Registrar Nuevo Insumo / Medicamento' : `Modificar Insumo #${editing?.id}`}
+            </h2>
+            <p className="text-xs text-gray-500 mt-1">
+              Control de inventario, existencias y precio de venta unitario.
+            </p>
+          </div>
+          <InsumoForm
+            initial={editing}
+            onSubmit={mode === 'create' ? handleCreate : handleUpdate}
+            onCancel={() => {
+              setMode('list')
+              setEditing(undefined)
+            }}
+            isSubmitting={createMutation.isPending || updateMutation.isPending}
+          />
+        </section>
       )}
 
       {/* Buscador y Filtros */}

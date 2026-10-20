@@ -27,7 +27,7 @@ import { ConfirmDialog } from '../components/ui/ConfirmDialog'
 import { SkeletonRow, SkeletonCard } from '../components/ui/SkeletonRow'
 import type { Cliente } from '../types'
 import type { ClienteFormValues } from '../schemas/clienteSchema'
-import { Plus, Pencil, Trash2, Search, RefreshCw, Users, Eye } from 'lucide-react'
+import { Plus, Pencil, Trash2, Search, RefreshCw, Users, Eye, ArrowLeft } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
 type Mode = 'list' | 'create' | 'edit'
@@ -97,53 +97,76 @@ export function ClientesPage() {
   // ── Formulario de creación / edición ─────────────────────
   if (mode !== 'list') {
     return (
-      <div className="max-w-2xl mx-auto py-4">
-        <div className="bg-white rounded-xl border border-blue-100 shadow-md p-6 sm:p-8">
-          <div className="border-b border-gray-100 pb-4 mb-6">
-            <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-              <Users className="text-blue-600" size={22} />
-              {mode === 'create' ? 'Nuevo Cliente' : 'Editar Cliente'}
-            </h1>
-            <p className="text-xs text-gray-500 mt-1">
-              Completa los datos del cliente para su registro en el sistema clínico.
-            </p>
+      <div className="max-w-4xl mx-auto space-y-6">
+        <header className="border-b border-gray-200 pb-4">
+          <button
+            onClick={cancelForm}
+            className="inline-flex items-center gap-1.5 text-xs font-medium text-blue-700 hover:text-blue-900 mb-2 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded"
+          >
+            <ArrowLeft size={14} aria-hidden="true" />
+            Volver al listado de Clientes
+          </button>
+          <div className="flex items-center gap-2 text-blue-700 font-semibold text-xs uppercase tracking-wider">
+            <Users size={16} aria-hidden="true" />
+            <span>Gestión Clínica</span>
           </div>
-          <ClienteForm
-            initial={mode === 'edit' ? editing : undefined}
-            onSubmit={mode === 'create' ? handleCreate : handleUpdate}
-            onCancel={cancelForm}
-            isSubmitting={createMutation.isPending || updateMutation.isPending}
-          />
-        </div>
+          <h1 className="text-2xl font-bold text-gray-900 tracking-tight mt-1 flex items-center gap-2.5">
+            <Users size={26} className="text-blue-600" aria-hidden="true" />
+            {mode === 'create' ? 'Nuevo Cliente' : 'Editar Cliente'}
+          </h1>
+          <p className="text-sm text-gray-600 mt-1">
+            Completa los datos del cliente para su registro y contacto en el sistema clínico.
+          </p>
+        </header>
+
+        <section aria-labelledby="form-cliente-heading">
+          <div className="bg-white rounded-xl border border-slate-200/80 shadow-lg p-6 sm:p-8">
+            <ClienteForm
+              initial={mode === 'edit' ? editing : undefined}
+              onSubmit={mode === 'create' ? handleCreate : handleUpdate}
+              onCancel={cancelForm}
+              isSubmitting={createMutation.isPending || updateMutation.isPending}
+            />
+          </div>
+        </section>
       </div>
     )
   }
 
   // ── Vista de lista ────────────────────────────────────────
   return (
-    <div>
+    <div className="max-w-4xl mx-auto space-y-6">
       {/* Encabezado */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-        <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-          <Users size={24} aria-hidden="true" />
-          Clientes
-          {!isLoading && clientes && (
-            <span className="ml-2 text-sm font-normal text-gray-500">
-              ({filtered.length} de {clientes.length})
-            </span>
-          )}
-        </h1>
+      <header className="border-b border-gray-200 pb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2 text-blue-700 font-semibold text-xs uppercase tracking-wider">
+            <Users size={16} aria-hidden="true" />
+            <span>Gestión Clínica</span>
+          </div>
+          <h1 className="text-2xl font-bold text-gray-900 tracking-tight mt-1 flex items-center gap-2.5">
+            <Users size={26} className="text-blue-600" aria-hidden="true" />
+            Clientes
+            {!isLoading && clientes && (
+              <span className="ml-2 text-sm font-normal text-gray-500">
+                ({filtered.length} de {clientes.length})
+              </span>
+            )}
+          </h1>
+          <p className="text-sm text-gray-600 mt-1">
+            Directorio de propietarios de pacientes y datos de contacto.
+          </p>
+        </div>
 
         {canWrite && (
           <button
             onClick={() => setMode('create')}
-            className="inline-flex items-center gap-2 min-h-[44px] px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors focus-visible:ring-2 focus-visible:ring-blue-800 focus-visible:outline-none"
+            className="inline-flex items-center justify-center gap-2 min-h-[44px] px-4 py-2.5 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition-colors shadow-sm focus-visible:ring-2 focus-visible:ring-blue-800 focus-visible:outline-none"
           >
             <Plus size={16} aria-hidden="true" />
             Nuevo cliente
           </button>
         )}
-      </div>
+      </header>
 
       {/* Barra de búsqueda */}
       <div className="relative mb-4">

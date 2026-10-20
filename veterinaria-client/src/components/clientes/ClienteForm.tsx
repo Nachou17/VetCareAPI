@@ -79,10 +79,12 @@ export function ClienteForm({ initial, onSubmit, onCancel, isSubmitting = false 
 
       <InputField
         id="documentoIdentidad"
-        label="Documento de identidad"
+        label="Documento de identidad (RUT)"
         required
         maxLength={20}
         autoComplete="off"
+        placeholder="Ej: 12.345.678-5 o 12345678-K"
+        hint="RUT chileno con dígito verificador Módulo 11"
         error={errors.documentoIdentidad?.message}
         {...register('documentoIdentidad')}
       />
@@ -91,8 +93,9 @@ export function ClienteForm({ initial, onSubmit, onCancel, isSubmitting = false 
         id="nombreCompleto"
         label="Nombre completo"
         required
-        maxLength={100}
+        maxLength={80}
         autoComplete="name"
+        placeholder="Ej: Juan Carlos Pérez Soto"
         error={errors.nombreCompleto?.message}
         {...register('nombreCompleto')}
       />
@@ -103,6 +106,7 @@ export function ClienteForm({ initial, onSubmit, onCancel, isSubmitting = false 
         required
         type="tel"
         autoComplete="tel"
+        placeholder="Ej: +56912345678"
         error={errors.telefono?.message}
         {...register('telefono')}
       />
@@ -112,7 +116,9 @@ export function ClienteForm({ initial, onSubmit, onCancel, isSubmitting = false 
         label="Correo electrónico"
         required
         type="email"
+        maxLength={100}
         autoComplete="email"
+        placeholder="juan.perez@correo.cl"
         error={errors.email?.message}
         {...register('email')}
       />
