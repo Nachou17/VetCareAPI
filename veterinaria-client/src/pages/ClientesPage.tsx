@@ -97,16 +97,24 @@ export function ClientesPage() {
   // ── Formulario de creación / edición ─────────────────────
   if (mode !== 'list') {
     return (
-      <div className="max-w-lg">
-        <h1 className="text-xl font-bold text-gray-900 mb-6">
-          {mode === 'create' ? 'Nuevo Cliente' : 'Editar Cliente'}
-        </h1>
-        <ClienteForm
-          initial={mode === 'edit' ? editing : undefined}
-          onSubmit={mode === 'create' ? handleCreate : handleUpdate}
-          onCancel={cancelForm}
-          isSubmitting={createMutation.isPending || updateMutation.isPending}
-        />
+      <div className="max-w-2xl mx-auto py-4">
+        <div className="bg-white rounded-xl border border-blue-100 shadow-md p-6 sm:p-8">
+          <div className="border-b border-gray-100 pb-4 mb-6">
+            <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+              <Users className="text-blue-600" size={22} />
+              {mode === 'create' ? 'Nuevo Cliente' : 'Editar Cliente'}
+            </h1>
+            <p className="text-xs text-gray-500 mt-1">
+              Completa los datos del cliente para su registro en el sistema clínico.
+            </p>
+          </div>
+          <ClienteForm
+            initial={mode === 'edit' ? editing : undefined}
+            onSubmit={mode === 'create' ? handleCreate : handleUpdate}
+            onCancel={cancelForm}
+            isSubmitting={createMutation.isPending || updateMutation.isPending}
+          />
+        </div>
       </div>
     )
   }

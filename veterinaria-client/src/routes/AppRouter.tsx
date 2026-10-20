@@ -26,7 +26,8 @@ import { ConsultasPage } from '../pages/ConsultasPage'
 import { InventarioPage } from '../pages/InventarioPage'
 import { RecetasPage } from '../pages/RecetasPage'
 import { FacturacionPage } from '../pages/FacturacionPage'
-import { AdministracionPage } from '../pages/AdministracionPage'
+import { AdminUsuariosPage } from '../pages/AdminUsuariosPage'
+import { AdminCatalogoPage } from '../pages/AdminCatalogoPage'
 import { ForbiddenPage } from '../pages/ForbiddenPage'
 
 const ADMIN_VET_RECEP = ['Administrador', 'Veterinario', 'Recepcionista']
@@ -87,7 +88,9 @@ export function AppRouter() {
 
           {/* Administración y Maestros — Solo Administrador */}
           <Route element={<ProtectedRoute allowedRoles={ONLY_ADMIN} />}>
-            <Route path="/administracion" element={<AdministracionPage />} />
+            <Route path="/admin/usuarios" element={<AdminUsuariosPage />} />
+            <Route path="/admin/catalogo" element={<AdminCatalogoPage />} />
+            <Route path="/administracion" element={<Navigate to="/admin/usuarios" replace />} />
           </Route>
         </Route>
       </Route>

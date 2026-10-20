@@ -22,6 +22,7 @@ import {
   Pill,
   Receipt,
   ShieldCheck,
+  Award,
   LogOut,
   ChevronDown,
   Menu,
@@ -99,7 +100,8 @@ export function Navbar() {
   const isFinanzasActive = ['/inventario', '/recetas', '/facturacion'].some((path) =>
     location.pathname.startsWith(path),
   )
-  const isSistemaActive = location.pathname.startsWith('/administracion')
+  const isSistemaActive =
+    location.pathname.startsWith('/administracion') || location.pathname.startsWith('/admin')
 
   const getRolBadge = (rol?: string) => {
     switch (rol) {
@@ -371,10 +373,10 @@ export function Navbar() {
               {openDropdown === 'sistema' && (
                 <div
                   role="menu"
-                  className="absolute left-0 mt-1.5 w-60 bg-white rounded-xl shadow-lg border border-gray-100 py-1.5 z-50 animate-in fade-in zoom-in-95 duration-150"
+                  className="absolute left-0 mt-1.5 w-64 bg-white rounded-xl shadow-lg border border-gray-100 py-1.5 z-50 animate-in fade-in zoom-in-95 duration-150"
                 >
                   <NavLink
-                    to="/administracion"
+                    to="/admin/usuarios"
                     role="menuitem"
                     className={({ isActive }) =>
                       `flex items-center gap-2.5 px-3.5 py-2.5 text-sm transition-colors ${
@@ -384,10 +386,28 @@ export function Navbar() {
                       }`
                     }
                   >
-                    <ShieldCheck size={16} className="text-purple-600" aria-hidden="true" />
+                    <Users size={16} className="text-purple-600" aria-hidden="true" />
                     <div>
-                      <p className="font-medium">Administración</p>
-                      <p className="text-xs text-gray-400 font-normal">Personal y Especialidades</p>
+                      <p className="font-medium">Personal y Usuarios</p>
+                      <p className="text-xs text-gray-400 font-normal">Cuentas, roles y accesos</p>
+                    </div>
+                  </NavLink>
+
+                  <NavLink
+                    to="/admin/catalogo"
+                    role="menuitem"
+                    className={({ isActive }) =>
+                      `flex items-center gap-2.5 px-3.5 py-2.5 text-sm transition-colors ${
+                        isActive
+                          ? 'bg-purple-50 text-purple-700 font-semibold'
+                          : 'text-gray-700 hover:bg-gray-50 hover:text-purple-700'
+                      }`
+                    }
+                  >
+                    <Award size={16} className="text-emerald-600" aria-hidden="true" />
+                    <div>
+                      <p className="font-medium">Catálogo y Aranceles</p>
+                      <p className="text-xs text-gray-400 font-normal">Especialidades y aranceles</p>
                     </div>
                   </NavLink>
                 </div>
@@ -551,15 +571,26 @@ export function Navbar() {
                 Sistema
               </p>
               <NavLink
-                to="/administracion"
+                to="/admin/usuarios"
                 className={({ isActive }) =>
                   `flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium ${
                     isActive ? 'bg-purple-50 text-purple-700 font-semibold' : 'text-gray-700 hover:bg-gray-50'
                   }`
                 }
               >
-                <ShieldCheck size={18} className="text-purple-600" />
-                Administración General
+                <Users size={18} className="text-purple-600" />
+                Personal y Usuarios del Sistema
+              </NavLink>
+              <NavLink
+                to="/admin/catalogo"
+                className={({ isActive }) =>
+                  `flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium ${
+                    isActive ? 'bg-purple-50 text-purple-700 font-semibold' : 'text-gray-700 hover:bg-gray-50'
+                  }`
+                }
+              >
+                <Award size={18} className="text-emerald-600" />
+                Catálogo Clínico y Aranceles Base
               </NavLink>
             </div>
           )}

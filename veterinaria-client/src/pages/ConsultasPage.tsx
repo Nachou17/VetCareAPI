@@ -114,22 +114,30 @@ export function ConsultasPage() {
 
       {/* Formulario Crear / Editar */}
       {mode !== 'list' && (
-        <section aria-labelledby="form-heading" className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-          <h2 id="form-heading" className="text-lg font-semibold text-gray-900 mb-4 pb-2 border-b border-gray-100">
-            {mode === 'create' ? 'Registrar Nueva Atención Médica' : `Modificar Consulta #${editing?.id}`}
-          </h2>
-          <ConsultaForm
-            initial={editing}
-            pacientes={pacientes}
-            citas={citas}
-            onSubmit={mode === 'create' ? handleCreate : handleUpdate}
-            onCancel={() => {
-              setMode('list')
-              setEditing(undefined)
-            }}
-            isSubmitting={createMutation.isPending || updateMutation.isPending}
-          />
-        </section>
+        <div className="max-w-2xl mx-auto py-2">
+          <section aria-labelledby="form-heading" className="bg-white rounded-xl shadow-md border border-blue-100 p-6 sm:p-8">
+            <div className="border-b border-gray-100 pb-4 mb-6">
+              <h2 id="form-heading" className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                <Stethoscope className="text-emerald-600" size={22} />
+                {mode === 'create' ? 'Registrar Nueva Atención Médica' : `Modificar Consulta #${editing?.id}`}
+              </h2>
+              <p className="text-xs text-gray-500 mt-1">
+                Ingreso del motivo, examen clínico y diagnóstico veterinario.
+              </p>
+            </div>
+            <ConsultaForm
+              initial={editing}
+              pacientes={pacientes}
+              citas={citas}
+              onSubmit={mode === 'create' ? handleCreate : handleUpdate}
+              onCancel={() => {
+                setMode('list')
+                setEditing(undefined)
+              }}
+              isSubmitting={createMutation.isPending || updateMutation.isPending}
+            />
+          </section>
+        </div>
       )}
 
       {/* Buscador */}
