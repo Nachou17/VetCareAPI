@@ -1,5 +1,5 @@
-# 🐾 Sistema de Gestión Veterinaria (VetCare)
-## Trabajo Práctico Nº 2 — Lenguaje de Programación Web II (LPW2)
+﻿# 🐾 Sistema de Gestión Veterinaria (VetCare)
+## Trabajo Práctico Nº 2: Lenguaje de Programación Web II (LPW2)
 
 [![.NET 10](https://img.shields.io/badge/.NET-10.0-512BD4?logo=dotnet)](https://dotnet.microsoft.com/)
 [![React 19](https://img.shields.io/badge/React-19.2-61DAFB?logo=react)](https://react.dev/)

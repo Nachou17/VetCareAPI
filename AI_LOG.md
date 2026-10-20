@@ -1,5 +1,5 @@
-# 🤖 Bitácora de Uso de Inteligencia Artificial (AI_LOG.md)
-## Trabajo Práctico Nº 2 — Lenguaje de Programación Web II (LPW2)
+﻿# 🤖 Bitácora de Uso de Inteligencia Artificial (AI_LOG.md)
+## Trabajo Práctico Nº 2: Lenguaje de Programación Web II (LPW2)
 
 ---
 
