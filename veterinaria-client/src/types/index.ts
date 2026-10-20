@@ -87,6 +87,119 @@ export interface ApiErrorResponse {
   detail?: string
 }
 
+// ----- Cita -----
+
+export interface Cita {
+  id: number
+  pacienteId: number
+  usuarioId: number
+  especialidadId: number
+  fechaHora: string
+  estado: string
+}
+
+export interface CitaCreateDto {
+  pacienteId: number
+  usuarioId: number
+  especialidadId: number
+  fechaHora: string
+  estado: string
+}
+
+// ----- Consulta -----
+
+export interface Consulta {
+  id: number
+  pacienteId: number
+  citaId?: number | null
+  motivo: string
+  diagnostico?: string | null
+}
+
+export interface ConsultaCreateDto {
+  pacienteId: number
+  citaId?: number | null
+  motivo: string
+  diagnostico?: string
+}
+
+// ----- Insumo -----
+
+export interface Insumo {
+  id: number
+  nombreProducto: string
+  tipo: string
+  stockActual: number
+  precioUnitario: number
+}
+
+export interface InsumoCreateDto {
+  nombreProducto: string
+  tipo: string
+  stockActual: number
+  precioUnitario: number
+}
+
+// ----- Especialidad -----
+
+export interface Especialidad {
+  id: number
+  nombre: string
+  costoBase: number
+}
+
+// ----- Receta -----
+
+export interface Receta {
+  id: number
+  consultaId: number
+  fechaEmision: string
+  validaHasta: string
+}
+
+export interface RecetaCreateDto {
+  consultaId: number
+  fechaEmision: string
+  validaHasta: string
+}
+
+// ----- DetalleReceta -----
+
+export interface DetalleReceta {
+  id: number
+  recetaId: number
+  insumoId: number
+  dosis: string
+  duracionDias: number
+}
+
+// ----- Factura -----
+
+export interface Factura {
+  id: number
+  clienteId: number
+  fechaEmision: string
+  montoImpuestos: number
+  montoTotal: number
+}
+
+export interface FacturaCreateDto {
+  clienteId: number
+  fechaEmision: string
+  montoImpuestos: number
+  montoTotal: number
+}
+
+// ----- DetalleFactura -----
+
+export interface DetalleFactura {
+  id: number
+  facturaId: number
+  consultaId?: number | null
+  insumoId?: number | null
+  subtotal: number
+}
+
 // ----- Paginación (preparado para uso futuro) -----
 
 export interface PaginatedResponse<T> {

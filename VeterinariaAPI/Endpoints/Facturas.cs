@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using VeterinariaAPI.Extensions;
 using VeterinariaAPI.Models;
 using VeterinariaAPI.Repositories;
@@ -16,6 +16,13 @@ namespace VeterinariaAPI.Endpoints
             {
                 var listaFacturas = await repo.ObtenerTodosAsync();
                 return Results.Ok(listaFacturas);
+            }).RequireAuthorization(policy => policy.RequireRole("Administrador", "Veterinario", "Recepcionista"));
+
+            // API para obtener factura por ID
+            facturas.MapGet("/{id:int}", async (int id, IRepository<Factura> repo) =>
+            {
+                var factura = await repo.ObtenerPorIdAsync(id);
+                return factura is null ? Results.NotFound() : Results.Ok(factura);
             }).RequireAuthorization(policy => policy.RequireRole("Administrador", "Veterinario", "Recepcionista"));
 
             // API para crear una factura
@@ -39,7 +46,7 @@ namespace VeterinariaAPI.Endpoints
                 await repo.GuardarCambiosAsync();
 
                 return Results.Created($"/api/v1/facturas/{nuevaFactura.Id}", nuevaFactura);
-            }).RequireAuthorization(policy => policy.RequireRole("Administrador", "Veterinario"));
+            }).RequireAuthorization(policy => policy.RequireRole("Administrador", "Veterinario", "Recepcionista"));
 
             // API para editar factura por ID
             facturas.MapPut("/{id:int}", async (int id, FacturaCreateDto dto, IRepository<Factura> repo) =>
@@ -60,7 +67,7 @@ namespace VeterinariaAPI.Endpoints
 
                 await repo.GuardarCambiosAsync();
                 return Results.Ok(facturaExistente);
-            }).RequireAuthorization(policy => policy.RequireRole("Administrador", "Veterinario"));
+            }).RequireAuthorization(policy => policy.RequireRole("Administrador", "Veterinario", "Recepcionista"));
 
             // API para eliminar Facturas
             facturas.MapDelete("/{id:int}", async (int id, IRepository<Factura> repo) =>

@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
@@ -98,7 +98,7 @@ namespace VeterinariaAPI.Endpoints
                     issuer: jwtIssuer,
                     audience: jwtAudience,
                     claims: claims,
-                    expires: DateTime.UtcNow.AddMinutes(int.Parse(jwtExpireMinutes)),
+                    expires: DateTime.UtcNow.AddMinutes(3),
                     signingCredentials: credenciales
                 );
 

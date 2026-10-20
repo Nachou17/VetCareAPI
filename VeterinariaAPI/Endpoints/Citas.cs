@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using VeterinariaAPI.Extensions;
 using VeterinariaAPI.Models;
 using VeterinariaAPI.Repositories;
@@ -16,6 +16,13 @@ namespace VeterinariaAPI.Endpoints
             {
                 var listarCitas = await repo.ObtenerTodosAsync();
                 return Results.Ok(listarCitas);
+            }).RequireAuthorization(policy => policy.RequireRole("Administrador", "Veterinario", "Recepcionista"));
+
+            // API para obtener una cita por ID
+            citas.MapGet("/{id:int}", async (int id, IRepository<Cita> repo) =>
+            {
+                var cita = await repo.ObtenerPorIdAsync(id);
+                return cita is null ? Results.NotFound() : Results.Ok(cita);
             }).RequireAuthorization(policy => policy.RequireRole("Administrador", "Veterinario", "Recepcionista"));
 
             // API para crear una cita
@@ -41,7 +48,7 @@ namespace VeterinariaAPI.Endpoints
                 await repo.GuardarCambiosAsync();
 
                 return Results.Created($"/api/v1/citas/{nuevaCita.Id}", nuevaCita);
-            }).RequireAuthorization(policy => policy.RequireRole("Administrador", "Veterinario"));
+            }).RequireAuthorization(policy => policy.RequireRole("Administrador", "Veterinario", "Recepcionista"));
 
             // API para editar una cita por ID
             citas.MapPut("/{id:int}", async (int id, CitaCreateDto dto, IRepository<Cita> repo) =>
@@ -64,7 +71,7 @@ namespace VeterinariaAPI.Endpoints
 
                 await repo.GuardarCambiosAsync();
                 return Results.Ok(citaExistente);
-            }).RequireAuthorization(policy => policy.RequireRole("Administrador", "Veterinario"));
+            }).RequireAuthorization(policy => policy.RequireRole("Administrador", "Veterinario", "Recepcionista"));
 
             // API para eliminar citas
             citas.MapDelete("/{id:int}", async (int id, IRepository<Cita> repo) =>

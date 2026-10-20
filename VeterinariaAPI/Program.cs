@@ -6,6 +6,7 @@ using Scalar.AspNetCore;
 using System.Text;
 using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
+using VeterinariaAPI.Data;
 using VeterinariaAPI.Endpoints;
 using VeterinariaAPI.Middlewares;
 using VeterinariaAPI.Models;
@@ -128,6 +129,9 @@ if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
     app.MapScalarApiReference();
+
+    // Poblado inicial de datos de prueba para demostración (idempotente)
+    await DbSeeder.SeedAsync(app.Services);
 }
 
 app.UseHttpsRedirection();

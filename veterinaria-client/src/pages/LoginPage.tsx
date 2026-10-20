@@ -30,6 +30,8 @@ export function LoginPage() {
   const location = useLocation()
   const from = (location.state as { from?: { pathname: string } })?.from?.pathname ?? '/dashboard'
 
+  const inactivityMessage = (location.state as { message?: string })?.message
+
   const emailRef = useRef<HTMLInputElement>(null)
 
   const {
@@ -73,6 +75,18 @@ export function LoginPage() {
         <p className="text-sm text-gray-500 text-center mb-6">Inicia sesión para continuar</p>
 
         <form onSubmit={handleSubmit(onSubmit)} noValidate aria-label="Formulario de inicio de sesión">
+          {/* Notificación de sesión expirada por inactividad */}
+          {inactivityMessage && (
+            <div
+              role="alert"
+              aria-live="assertive"
+              className="mb-4 p-3 bg-amber-50 border border-amber-300 text-amber-900 text-sm rounded-lg flex items-center gap-2"
+            >
+              <span aria-hidden="true" className="text-amber-600 font-bold">⚠️</span>
+              <span className="font-medium">{inactivityMessage}</span>
+            </div>
+          )}
+
           {/* Error global (401, rate-limit, etc.) */}
           {errors.root && (
             <div role="alert" className="mb-4 p-3 bg-red-50 border border-red-300 text-red-700 text-sm rounded">

@@ -77,7 +77,7 @@ test.describe('Flujo Crítico de Usuario: Login y Gestión de Clientes', () => {
     await expect(page.getByRole('heading', { name: /Bienvenido, Administrador General/i })).toBeVisible()
 
     // 4. Navegar a la sección de Clientes desde el menú principal
-    await page.getByRole('link', { name: /clientes/i }).click()
+    await page.getByRole('link', { name: 'Clientes', exact: true }).click()
     await expect(page).toHaveURL(/.*clientes/)
     await expect(page.getByRole('heading', { name: /Clientes/i })).toBeVisible()
 

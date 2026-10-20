@@ -1,1 +1,35 @@
 @import "tailwindcss";
+
+@theme {
+  --color-vetcare-primary: #0077b6;
+  --color-vetcare-hover: #023e8a;
+  --color-vetcare-active: #03045e;
+  --color-vetcare-soft: #caf0f8;
+  --color-vetcare-muted: #00b4d8;
+  --color-vetcare-dark: #03045e;
+
+  --color-primary: #0077b6;
+  --color-primary-hover: #023e8a;
+  --color-primary-active: #03045e;
+  --color-primary-soft: #caf0f8;
+  --color-primary-muted: #00b4d8;
+
+  --color-blue-50: #f0f9ff;
+  --color-blue-100: #caf0f8;
+  --color-blue-200: #90e0ef;
+  --color-blue-300: #48cae4;
+  --color-blue-400: #00b4d8;
+  --color-blue-500: #0096c7;
+  --color-blue-600: #0077b6;
+  --color-blue-700: #023e8a;
+  --color-blue-800: #03045e;
+  --color-blue-900: #011b3b;
+}
+
+:root {
+  --vetcare-primary: #0077b6;
+  --vetcare-hover: #023e8a;
+  --vetcare-active: #03045e;
+  --vetcare-soft: #caf0f8;
+  --vetcare-muted: #00b4d8;
+}

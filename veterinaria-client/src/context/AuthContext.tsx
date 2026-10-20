@@ -4,8 +4,9 @@
 // expone login/logout y decodifica el JWT (sin librería extra).
 // ======================================================
 
-import { createContext, useContext, useState, useCallback } from 'react'
+import { createContext, useContext, useState, useCallback, useEffect } from 'react'
 import type { ReactNode } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { authService } from '../services/authService'
 import { tokenStorage } from '../utils/token'
 import type { LoginRequest, UsuarioAuth } from '../types'
@@ -47,6 +48,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 // ── Provider ─────────────────────────────────────────────────
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UsuarioAuth | null>(initUserFromToken)
+  const navigate = useNavigate()
 
   const login = useCallback(async (credentials: LoginRequest) => {
     const token = await authService.login(credentials)
@@ -58,6 +60,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     authService.logout()
     setUser(null)
   }, [])
+
+  // ── Listener de inactividad (3 minutos) ──────────────────────
+  const INACTIVITY_TIMEOUT_MS = 3 * 60 * 1000
+
+  const handleInactivityLogout = useCallback(() => {
+    authService.logout()
+    setUser(null)
+    navigate('/login', {
+      replace: true,
+      state: { message: 'Sesión expirada por inactividad' },
+    })
+  }, [navigate])
+
+  useEffect(() => {
+    if (!user) return
+
+    let timer: ReturnType<typeof setTimeout>
+
+    const resetTimer = () => {
+      clearTimeout(timer)
+      timer = setTimeout(handleInactivityLogout, INACTIVITY_TIMEOUT_MS)
+    }
+
+    const events: Array<keyof WindowEventMap> = ['mousemove', 'keydown', 'click', 'scroll']
+    events.forEach((ev) => window.addEventListener(ev, resetTimer, { passive: true }))
+
+    resetTimer()
+
+    return () => {
+      clearTimeout(timer)
+      events.forEach((ev) => window.removeEventListener(ev, resetTimer))
+    }
+  }, [user, handleInactivityLogout])
 
   return (
     <AuthContext.Provider value={{ user, isAuthenticated: user !== null, login, logout }}>

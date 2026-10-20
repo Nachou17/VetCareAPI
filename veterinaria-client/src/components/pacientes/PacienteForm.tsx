@@ -124,8 +124,8 @@ export function PacienteForm({ initial, clientes, onSubmit, onCancel, isSubmitti
         label="Peso (kg)"
         type="number"
         step="0.01"
-        min="0"
-        hint="Ej: 4.5"
+        required
+        hint="Debe ser mayor a 0.1 kg y menor a 200 kg (ej: 4.5)"
         error={errors.peso?.message}
         {...register('peso', { valueAsNumber: true })}
       />

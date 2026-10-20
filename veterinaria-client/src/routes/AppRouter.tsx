@@ -21,9 +21,17 @@ import { ClientesPage } from '../pages/ClientesPage'
 import { ClienteDetailPage } from '../pages/ClienteDetailPage'
 import { PacientesPage } from '../pages/PacientesPage'
 import { PacienteDetailPage } from '../pages/PacienteDetailPage'
+import { CitasPage } from '../pages/CitasPage'
+import { ConsultasPage } from '../pages/ConsultasPage'
+import { InventarioPage } from '../pages/InventarioPage'
+import { RecetasPage } from '../pages/RecetasPage'
+import { FacturacionPage } from '../pages/FacturacionPage'
+import { AdministracionPage } from '../pages/AdministracionPage'
 import { ForbiddenPage } from '../pages/ForbiddenPage'
 
 const ADMIN_VET_RECEP = ['Administrador', 'Veterinario', 'Recepcionista']
+const ADMIN_VET = ['Administrador', 'Veterinario']
+const ONLY_ADMIN = ['Administrador']
 
 export function AppRouter() {
   return (
@@ -50,6 +58,36 @@ export function AppRouter() {
           <Route element={<ProtectedRoute allowedRoles={ADMIN_VET_RECEP} />}>
             <Route path="/pacientes" element={<PacientesPage />} />
             <Route path="/pacientes/:id" element={<PacienteDetailPage />} />
+          </Route>
+
+          {/* Citas y Agenda — Admin | Vet | Recepcionista */}
+          <Route element={<ProtectedRoute allowedRoles={ADMIN_VET_RECEP} />}>
+            <Route path="/citas" element={<CitasPage />} />
+          </Route>
+
+          {/* Consultas Médicas — Admin | Vet */}
+          <Route element={<ProtectedRoute allowedRoles={ADMIN_VET} />}>
+            <Route path="/consultas" element={<ConsultasPage />} />
+          </Route>
+
+          {/* Inventario y Farmacia — Admin | Vet | Recepcionista */}
+          <Route element={<ProtectedRoute allowedRoles={ADMIN_VET_RECEP} />}>
+            <Route path="/inventario" element={<InventarioPage />} />
+          </Route>
+
+          {/* Recetas Médicas — Admin | Vet | Recepcionista */}
+          <Route element={<ProtectedRoute allowedRoles={ADMIN_VET_RECEP} />}>
+            <Route path="/recetas" element={<RecetasPage />} />
+          </Route>
+
+          {/* Facturación y Cobros — Admin | Vet | Recepcionista */}
+          <Route element={<ProtectedRoute allowedRoles={ADMIN_VET_RECEP} />}>
+            <Route path="/facturacion" element={<FacturacionPage />} />
+          </Route>
+
+          {/* Administración y Maestros — Solo Administrador */}
+          <Route element={<ProtectedRoute allowedRoles={ONLY_ADMIN} />}>
+            <Route path="/administracion" element={<AdministracionPage />} />
           </Route>
         </Route>
       </Route>
