@@ -15,7 +15,8 @@ export function useClientes() {
   return useQuery({
     queryKey: CLIENTES_KEY,
     queryFn: clienteService.getAll,
-    staleTime: 1000 * 60, // 1 minuto
+    staleTime: 0, // Revalidación instantánea
+    refetchOnMount: 'always', // Disparo inmediato al montar la vista
   })
 }
 

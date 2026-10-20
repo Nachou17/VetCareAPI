@@ -14,7 +14,8 @@ export function usePacientes() {
   return useQuery({
     queryKey: PACIENTES_KEY,
     queryFn: pacienteService.getAll,
-    staleTime: 1000 * 60,
+    staleTime: 0, // Revalidación instantánea
+    refetchOnMount: 'always', // Disparo inmediato al montar la vista
   })
 }
 

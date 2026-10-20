@@ -4,9 +4,14 @@
 // y soporte responsivo móvil con menú hamburguesa (WCAG 2.2 AA).
 // ======================================================
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { NavLink, Link, useLocation } from 'react-router-dom'
+import { useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '../../context/AuthContext'
+import { CLIENTES_KEY } from '../../hooks/useClientes'
+import { PACIENTES_KEY } from '../../hooks/usePacientes'
+import { clienteService } from '../../services/clienteService'
+import { pacienteService } from '../../services/pacienteService'
 import {
   LayoutDashboard,
   Users,
@@ -26,6 +31,26 @@ import {
 export function Navbar() {
   const { user, logout } = useAuth()
   const location = useLocation()
+  const queryClient = useQueryClient()
+
+  // ── Precarga (Prefetch) inmediata de Clientes y Pacientes ───
+  const prefetchClientes = useCallback(() => {
+    void queryClient.prefetchQuery({
+      queryKey: CLIENTES_KEY,
+      queryFn: clienteService.getAll,
+    })
+  }, [queryClient])
+
+  const prefetchPacientes = useCallback(() => {
+    void queryClient.prefetchQuery({
+      queryKey: PACIENTES_KEY,
+      queryFn: pacienteService.getAll,
+    })
+    void queryClient.prefetchQuery({
+      queryKey: CLIENTES_KEY,
+      queryFn: clienteService.getAll,
+    })
+  }, [queryClient])
 
   // Estados de los dropdowns en escritorio
   const [openDropdown, setOpenDropdown] = useState<'clinica' | 'finanzas' | 'sistema' | null>(null)
@@ -140,6 +165,14 @@ export function Navbar() {
             <button
               type="button"
               onClick={() => toggleDropdown('clinica')}
+              onMouseEnter={() => {
+                prefetchClientes()
+                prefetchPacientes()
+              }}
+              onFocus={() => {
+                prefetchClientes()
+                prefetchPacientes()
+              }}
               aria-expanded={openDropdown === 'clinica'}
               aria-haspopup="true"
               className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors min-h-[40px] focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
@@ -166,6 +199,9 @@ export function Navbar() {
                 <NavLink
                   to="/clientes"
                   role="menuitem"
+                  onMouseEnter={prefetchClientes}
+                  onFocus={prefetchClientes}
+                  onPointerDown={prefetchClientes}
                   className={({ isActive }) =>
                     `flex items-center gap-2.5 px-3.5 py-2.5 text-sm transition-colors ${
                       isActive
@@ -181,6 +217,9 @@ export function Navbar() {
                 <NavLink
                   to="/pacientes"
                   role="menuitem"
+                  onMouseEnter={prefetchPacientes}
+                  onFocus={prefetchPacientes}
+                  onPointerDown={prefetchPacientes}
                   className={({ isActive }) =>
                     `flex items-center gap-2.5 px-3.5 py-2.5 text-sm transition-colors ${
                       isActive
@@ -413,6 +452,9 @@ export function Navbar() {
             </p>
             <NavLink
               to="/clientes"
+              onMouseEnter={prefetchClientes}
+              onFocus={prefetchClientes}
+              onPointerDown={prefetchClientes}
               className={({ isActive }) =>
                 `flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium ${
                   isActive ? 'bg-blue-50 text-blue-700 font-semibold' : 'text-gray-700 hover:bg-gray-50'
@@ -424,6 +466,9 @@ export function Navbar() {
             </NavLink>
             <NavLink
               to="/pacientes"
+              onMouseEnter={prefetchPacientes}
+              onFocus={prefetchPacientes}
+              onPointerDown={prefetchPacientes}
               className={({ isActive }) =>
                 `flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium ${
                   isActive ? 'bg-blue-50 text-blue-700 font-semibold' : 'text-gray-700 hover:bg-gray-50'
