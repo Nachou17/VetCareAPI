@@ -97,8 +97,13 @@ export function FacturacionPage() {
 
   async function handleDelete() {
     if (!toDelete) return
-    await deleteFacturaMutation.mutateAsync(toDelete.id)
-    setToDelete(null)
+    try {
+      await deleteFacturaMutation.mutateAsync(toDelete.id)
+    } catch {
+      // Error de restricción 409 o similar es capturado por el interceptor global con Toast accesible
+    } finally {
+      setToDelete(null)
+    }
   }
 
   return (

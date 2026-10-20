@@ -162,6 +162,12 @@ app.MapGet("/api/test-error", () =>
     throw new Exception("Prueba de falla capturada por el middleware");
 });
 
+app.MapGet("/api/test-fk-conflict", () =>
+{
+    throw new DbUpdateException("The DELETE statement conflicted with the REFERENCE constraint 'FK_Pacientes_Clientes'",
+        new Exception("The DELETE statement conflicted with the REFERENCE constraint"));
+});
+
 app.Run();
 
 public partial class Program { }

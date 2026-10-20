@@ -92,8 +92,13 @@ export function RecetasPage() {
 
   async function handleDelete() {
     if (!toDelete) return
-    await deleteRecetaMutation.mutateAsync(toDelete.id)
-    setToDelete(null)
+    try {
+      await deleteRecetaMutation.mutateAsync(toDelete.id)
+    } catch {
+      // Error de restricción 409 o similar es capturado por el interceptor global con Toast accesible
+    } finally {
+      setToDelete(null)
+    }
   }
 
   return (

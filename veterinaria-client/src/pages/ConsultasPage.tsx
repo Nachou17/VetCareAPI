@@ -84,8 +84,13 @@ export function ConsultasPage() {
 
   async function handleDelete() {
     if (!toDelete) return
-    await deleteMutation.mutateAsync(toDelete.id)
-    setToDelete(null)
+    try {
+      await deleteMutation.mutateAsync(toDelete.id)
+    } catch {
+      // Error de restricción 409 o similar es capturado por el interceptor global con Toast accesible
+    } finally {
+      setToDelete(null)
+    }
   }
 
   return (

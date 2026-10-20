@@ -118,15 +118,20 @@ export function CitasPage() {
 
   async function handleDelete() {
     if (!toDelete) return
-    await deleteMutation.mutateAsync(toDelete.id)
     const id = toDelete.id
-    setToDelete(null)
-    setToast({
-      id: Date.now().toString(),
-      title: 'Cita Eliminada',
-      message: `La cita #${id} ha sido cancelada y eliminada.`,
-      type: 'info',
-    })
+    try {
+      await deleteMutation.mutateAsync(id)
+      setToast({
+        id: Date.now().toString(),
+        title: 'Cita Eliminada',
+        message: `La cita #${id} ha sido cancelada y eliminada.`,
+        type: 'info',
+      })
+    } catch {
+      // Error de restricción 409 o similar es capturado por el interceptor global con Toast accesible
+    } finally {
+      setToDelete(null)
+    }
   }
 
   return (

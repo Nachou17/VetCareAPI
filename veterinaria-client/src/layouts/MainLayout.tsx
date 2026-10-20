@@ -6,10 +6,21 @@
 //   - skip-link para omitir navegación con teclado
 // ======================================================
 
+import { useState, useEffect } from 'react'
 import { Outlet } from 'react-router-dom'
 import { Navbar } from '../components/navigation/Navbar'
+import { Toast, type ToastMessage } from '../components/ui/Toast'
+import { toastEvent } from '../utils/toast'
 
 export function MainLayout() {
+  const [toast, setToast] = useState<ToastMessage | null>(null)
+
+  useEffect(() => {
+    const unsubscribe = toastEvent.subscribe((newToast) => {
+      setToast(newToast)
+    })
+    return unsubscribe
+  }, [])
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       {/* Skip link — accesibilidad: permite saltar al contenido con teclado */}
@@ -36,6 +47,9 @@ export function MainLayout() {
       <footer className="text-center py-4 text-xs text-gray-400 border-t border-gray-100 bg-white">
         VetCare &copy; {new Date().getFullYear()} — Plataforma de Gestión Clínica Veterinaria Integral
       </footer>
+
+      {/* Notificación Toast accesible global (409 Conflict, avisos del sistema) */}
+      <Toast toast={toast} onClose={() => setToast(null)} />
     </div>
   )
 }

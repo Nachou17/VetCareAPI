@@ -1,4 +1,4 @@
-﻿using System.Net;
+using System.Net;
 using System.Net.Http.Json;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Xunit;
@@ -78,6 +78,20 @@ namespace VeterinariaAPI.Tests
 
             // Assert: Las últimas peticiones deben ser bloqueadas con HTTP 429
             Assert.Equal((HttpStatusCode)429, lastResponse.StatusCode);
+        }
+
+        [Fact]
+        public async Task Test_ForeignKeyConflict_Returns409Conflict()
+        {
+            // Act: Invocación a ruta que dispara excepción con restricción de clave foránea
+            var response = await _client.GetAsync("/api/test-fk-conflict");
+
+            // Assert: Verifica código HTTP 409 Conflict y mensaje estructurado
+            Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+
+            var json = await response.Content.ReadAsStringAsync();
+            Assert.Contains("409", json);
+            Assert.Contains("No se puede eliminar el registro seleccionado", json);
         }
     }
 }

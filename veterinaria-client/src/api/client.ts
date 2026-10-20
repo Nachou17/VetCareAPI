@@ -14,6 +14,7 @@
 import axios from 'axios'
 import type { AxiosError, InternalAxiosRequestConfig } from 'axios'
 import { tokenStorage } from '../utils/token'
+import { toastEvent } from '../utils/toast'
 import type { ApiValidationError, ApiErrorResponse } from '../types'
 
 // ── URL base leída de la variable de entorno VITE_API_URL ──
@@ -60,6 +61,23 @@ apiClient.interceptors.response.use(
     // 403 Forbidden → usuario autenticado pero sin permiso
     if (status === 403) {
       return Promise.reject(new Error('No tienes permiso para realizar esta acción.'))
+    }
+
+    // 409 Conflict → Violación de integridad referencial / clave foránea en base de datos
+    if (status === 409) {
+      const errorData = error.response?.data as { message?: string } | undefined
+      const mensaje =
+        errorData?.message ||
+        'No es posible eliminar el registro ya que posee dependencias activas (consultas, citas, mascotas o facturas vinculadas).'
+
+      toastEvent.show({
+        title: 'Restricción de Integridad',
+        message: mensaje,
+        type: 'warning',
+        durationMs: 5000,
+      })
+
+      return Promise.reject(new Error(mensaje))
     }
 
     // 422 / 400 ValidationProblem → propagar para que el formulario los muestre
