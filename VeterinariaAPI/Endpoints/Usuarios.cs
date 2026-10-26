@@ -92,6 +92,11 @@ namespace VeterinariaAPI.Endpoints
                 var jwtAudience = config["Jwt:Audience"]!;
                 var jwtExpireMinutes = config["Jwt:ExpireMinutes"]!;
 
+                if (!double.TryParse(jwtExpireMinutes, out var expireMinutes) || expireMinutes <= 0)
+                {
+                    expireMinutes = 60;
+                }
+
                 var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey));
                 var credenciales = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
@@ -99,7 +104,7 @@ namespace VeterinariaAPI.Endpoints
                     issuer: jwtIssuer,
                     audience: jwtAudience,
                     claims: claims,
-                    expires: DateTime.UtcNow.AddMinutes(3),
+                    expires: DateTime.UtcNow.AddMinutes(expireMinutes),
                     signingCredentials: credenciales
                 );
 

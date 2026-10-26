@@ -36,7 +36,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuer = true,
-            ValidateAudience = false,
+            ValidateAudience = true,
             ValidateLifetime = true,
             ValidateIssuerSigningKey = true,
             ValidIssuer = jwtIssuer,
@@ -130,8 +130,23 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
     app.MapScalarApiReference();
 
-    // Poblado inicial de datos de prueba para demostración (idempotente)
-    await DbSeeder.SeedAsync(app.Services);
+    // Poblado inicial de datos de prueba para demostración (requiere configuración explícita SeedDemoData: true)
+    if (builder.Configuration.GetValue<bool>("SeedDemoData", false))
+    {
+        await DbSeeder.SeedAsync(app.Services);
+    }
+
+    // Endpoints de prueba restringidos exclusivamente a entorno Development
+    app.MapGet("/api/test-error", () =>
+    {
+        throw new Exception("Prueba de falla capturada por el middleware");
+    });
+
+    app.MapGet("/api/test-fk-conflict", () =>
+    {
+        throw new DbUpdateException("The DELETE statement conflicted with the REFERENCE constraint 'FK_Pacientes_Clientes'",
+            new Exception("The DELETE statement conflicted with the REFERENCE constraint"));
+    });
 }
 
 app.UseHttpsRedirection();
@@ -156,17 +171,6 @@ app.MapRecetaApi();
 app.MapDetalleFacApi();
 app.MapConsultasApi();
 app.MapUsuariosApi();
-
-app.MapGet("/api/test-error", () =>
-{
-    throw new Exception("Prueba de falla capturada por el middleware");
-});
-
-app.MapGet("/api/test-fk-conflict", () =>
-{
-    throw new DbUpdateException("The DELETE statement conflicted with the REFERENCE constraint 'FK_Pacientes_Clientes'",
-        new Exception("The DELETE statement conflicted with the REFERENCE constraint"));
-});
 
 app.Run();
 

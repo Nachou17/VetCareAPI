@@ -12,9 +12,18 @@ namespace VeterinariaAPI.Data
             var context = scope.ServiceProvider.GetRequiredService<VeterinariodbContext>();
             var auth = scope.ServiceProvider.GetRequiredService<AuthService>();
             var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+            var config = scope.ServiceProvider.GetRequiredService<IConfiguration>();
 
             try
             {
+                // Sembrado de demostración condicionado a configuración explícita
+                var seedEnabled = config.GetValue<bool>("SeedDemoData", false);
+                if (!seedEnabled)
+                {
+                    logger.LogInformation("ℹ️ [DbSeeder] Sembrado de datos de prueba omitido (configuración 'SeedDemoData': false).");
+                    return;
+                }
+
                 // Verificar si la base de datos es accesible
                 if (!await context.Database.CanConnectAsync())
                 {
@@ -42,7 +51,7 @@ namespace VeterinariaAPI.Data
                 var vetRol = await context.Roles.FirstOrDefaultAsync(r => r.Nombre == "Veterinario") ?? await context.Roles.FirstAsync();
                 var recepRol = await context.Roles.FirstOrDefaultAsync(r => r.Nombre == "Recepcionista") ?? await context.Roles.FirstAsync();
 
-                // 2. USUARIOS
+                // 2. USUARIOS (solo crea cuentas iniciales si no existen; nunca sobreescribe contraseñas existentes)
                 var adminUser = await context.Usuarios.FirstOrDefaultAsync(u => u.Email == "admin@veterinaria.com");
                 if (adminUser == null)
                 {
@@ -55,12 +64,6 @@ namespace VeterinariaAPI.Data
                         PasswordHash = BCrypt.Net.BCrypt.HashPassword("123456")
                     };
                     await context.Usuarios.AddAsync(adminUser);
-                    await context.SaveChangesAsync();
-                }
-                else
-                {
-                    // Asegurar que el hash esté sincronizado con BCrypt para "123456"
-                    adminUser.PasswordHash = BCrypt.Net.BCrypt.HashPassword("123456");
                     await context.SaveChangesAsync();
                 }
 
@@ -78,11 +81,6 @@ namespace VeterinariaAPI.Data
                     await context.Usuarios.AddAsync(vetUser);
                     await context.SaveChangesAsync();
                 }
-                else
-                {
-                    vetUser.PasswordHash = BCrypt.Net.BCrypt.HashPassword("123456");
-                    await context.SaveChangesAsync();
-                }
 
                 var recepUser = await context.Usuarios.FirstOrDefaultAsync(u => u.Email == "recepcion@veterinaria.com");
                 if (recepUser == null)
@@ -96,11 +94,6 @@ namespace VeterinariaAPI.Data
                         PasswordHash = BCrypt.Net.BCrypt.HashPassword("123456")
                     };
                     await context.Usuarios.AddAsync(recepUser);
-                    await context.SaveChangesAsync();
-                }
-                else
-                {
-                    recepUser.PasswordHash = BCrypt.Net.BCrypt.HashPassword("123456");
                     await context.SaveChangesAsync();
                 }
 

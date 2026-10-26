@@ -84,7 +84,11 @@ namespace VeterinariaAPI.Middlewares
                 message = "No se puede eliminar el registro seleccionado porque tiene otros elementos asociados (consultas, citas, mascotas o facturas vinculadas)."
             };
 
-            var jsonOpciones = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
+            var jsonOpciones = new JsonSerializerOptions
+            {
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+            };
             return context.Response.WriteAsync(JsonSerializer.Serialize(respuesta, jsonOpciones));
         }
 
@@ -97,11 +101,14 @@ namespace VeterinariaAPI.Middlewares
             {
                 status = context.Response.StatusCode,
                 error = "Error Interno del Servidor",
-                message = "Ocurrió un error inesperado al procesar la solicitud.",
-                detalle = exception.Message
+                message = "Ocurrió un error inesperado al procesar la solicitud."
             };
 
-            var jsonOpciones = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
+            var jsonOpciones = new JsonSerializerOptions
+            {
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+            };
             return context.Response.WriteAsync(JsonSerializer.Serialize(respuesta, jsonOpciones));
         }
     }
