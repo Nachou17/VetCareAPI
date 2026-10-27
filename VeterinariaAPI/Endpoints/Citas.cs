@@ -1,4 +1,6 @@
 using System.ComponentModel.DataAnnotations;
+using Microsoft.EntityFrameworkCore;
+using VeterinariaAPI.Data;
 using VeterinariaAPI.Extensions;
 using VeterinariaAPI.Models;
 using VeterinariaAPI.Repositories;
@@ -11,11 +13,46 @@ namespace VeterinariaAPI.Endpoints
         {
             var citas = app.MapGroup("/api/v1/citas").WithTags("Citas (v1)");
 
-            // API para listar citas
-            citas.MapGet("/", async (IRepository<Cita> repo) =>
+            // API para listar citas con paginación y orden por recencia (FechaHora descendente)
+            citas.MapGet("/", async (int? page, int? pageSize, string? estado, int? pacienteId, int? usuarioId, VeterinariodbContext db) =>
             {
-                var listarCitas = await repo.ObtenerTodosAsync();
-                return Results.Ok(listarCitas);
+                var query = db.Citas.AsNoTracking().AsQueryable();
+
+                if (!string.IsNullOrWhiteSpace(estado) && estado != "todos")
+                {
+                    query = query.Where(c => c.Estado == estado);
+                }
+
+                if (pacienteId.HasValue && pacienteId.Value > 0)
+                {
+                    query = query.Where(c => c.PacienteId == pacienteId.Value);
+                }
+
+                if (usuarioId.HasValue && usuarioId.Value > 0)
+                {
+                    query = query.Where(c => c.UsuarioId == usuarioId.Value);
+                }
+
+                // Criterio de recencia: fecha/hora de la cita descendente, luego ID descendente
+                query = query.OrderByDescending(c => c.FechaHora).ThenByDescending(c => c.Id);
+
+                if (page.HasValue)
+                {
+                    var p = Math.Max(1, page.Value);
+                    var ps = Math.Clamp(pageSize ?? 10, 1, 100);
+                    var total = await query.CountAsync();
+                    var items = await query.Skip((p - 1) * ps).Take(ps).ToListAsync();
+
+                    return Results.Ok(new PagedResult<Cita>
+                    {
+                        Items = items,
+                        Page = p,
+                        PageSize = ps,
+                        TotalItems = total
+                    });
+                }
+
+                return Results.Ok(await query.ToListAsync());
             }).RequireAuthorization(policy => policy.RequireRole("Administrador", "Veterinario", "Recepcionista"));
 
             // API para obtener una cita por ID
@@ -30,6 +67,16 @@ namespace VeterinariaAPI.Endpoints
             {
                 // Validación estructurada del DTO
                 var errores = dto.Validar();
+
+                // Validación de fecha no retroactiva para agendamiento (interpreta datetime-local en America/Santiago)
+                var nowUtc = DateTime.UtcNow;
+                var inputUtc = dto.FechaHora.ToChileUtc();
+
+                if (inputUtc < nowUtc.AddMinutes(-5))
+                {
+                    errores["FechaHora"] = new[] { "La fecha y hora de la cita no pueden ser anteriores a la fecha y hora actual." };
+                }
+
                 if (errores.Count > 0)
                 {
                     return Results.ValidationProblem(errores);
@@ -53,8 +100,17 @@ namespace VeterinariaAPI.Endpoints
             // API para editar una cita por ID
             citas.MapPut("/{id:int}", async (int id, CitaCreateDto dto, IRepository<Cita> repo) =>
             {
-                // Validación estructurada del DTO
                 var errores = dto.Validar();
+
+                var nowUtc = DateTime.UtcNow;
+                var inputUtc = dto.FechaHora.ToChileUtc();
+
+                // Al modificar una cita pendiente o confirmada, la nueva fecha debe ser futura
+                if (dto.Estado != "Realizada" && dto.Estado != "Cancelada" && inputUtc < nowUtc.AddMinutes(-5))
+                {
+                    errores["FechaHora"] = new[] { "La fecha y hora de la cita no pueden ser anteriores a la fecha y hora actual." };
+                }
+
                 if (errores.Count > 0)
                 {
                     return Results.ValidationProblem(errores);

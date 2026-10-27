@@ -1,4 +1,6 @@
 using System.ComponentModel.DataAnnotations;
+using Microsoft.EntityFrameworkCore;
+using VeterinariaAPI.Data;
 using VeterinariaAPI.Extensions;
 using VeterinariaAPI.Models;
 using VeterinariaAPI.Repositories;
@@ -11,11 +13,36 @@ namespace VeterinariaAPI.Endpoints
         {
             var facturas = app.MapGroup("/api/v1/facturas").WithTags("Facturas (v1)");
 
-            // API para listar facturas
-            facturas.MapGet("/", async (IRepository<Factura> repo) =>
+            // API para listar facturas con paginación y orden por recencia (FechaEmision descendente)
+            facturas.MapGet("/", async (int? page, int? pageSize, int? clienteId, VeterinariodbContext db) =>
             {
-                var listaFacturas = await repo.ObtenerTodosAsync();
-                return Results.Ok(listaFacturas);
+                var query = db.Facturas.AsNoTracking().AsQueryable();
+
+                if (clienteId.HasValue && clienteId.Value > 0)
+                {
+                    query = query.Where(f => f.ClienteId == clienteId.Value);
+                }
+
+                // Criterio de recencia: Fecha de emisión descendente, luego ID descendente
+                query = query.OrderByDescending(f => f.FechaEmision).ThenByDescending(f => f.Id);
+
+                if (page.HasValue)
+                {
+                    var p = Math.Max(1, page.Value);
+                    var ps = Math.Clamp(pageSize ?? 10, 1, 100);
+                    var total = await query.CountAsync();
+                    var items = await query.Skip((p - 1) * ps).Take(ps).ToListAsync();
+
+                    return Results.Ok(new PagedResult<Factura>
+                    {
+                        Items = items,
+                        Page = p,
+                        PageSize = ps,
+                        TotalItems = total
+                    });
+                }
+
+                return Results.Ok(await query.ToListAsync());
             }).RequireAuthorization(policy => policy.RequireRole("Administrador", "Veterinario", "Recepcionista"));
 
             // API para obtener factura por ID
@@ -29,6 +56,13 @@ namespace VeterinariaAPI.Endpoints
             facturas.MapPost("/", async (FacturaCreateDto dto, IRepository<Factura> repo) =>
             {
                 var errores = dto.Validar();
+
+                var today = ChileTimeHelper.Today;
+                if (dto.FechaEmision < today)
+                {
+                    errores["FechaEmision"] = new[] { "La fecha de emisión no puede ser anterior a la fecha actual." };
+                }
+
                 if (errores.Count > 0)
                 {
                     return Results.ValidationProblem(errores);

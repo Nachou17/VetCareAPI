@@ -200,7 +200,15 @@ export interface DetalleFactura {
   subtotal: number
 }
 
-// ----- Paginación (preparado para uso futuro) -----
+// ----- Paginación estándar de la API -----
+
+export interface PagedResult<T> {
+  items: T[]
+  page: number
+  pageSize: number
+  totalItems: number
+  totalPages: number
+}
 
 export interface PaginatedResponse<T> {
   items: T[]

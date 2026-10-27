@@ -5,7 +5,7 @@
 // ======================================================
 
 import { apiClient } from '../api/client'
-import type { Cliente, ClienteCreateDto } from '../types'
+import type { Cliente, ClienteCreateDto, PagedResult } from '../types'
 
 const BASE = '/clientes'
 
@@ -13,6 +13,14 @@ export const clienteService = {
   /** Lista todos los clientes. Requiere rol: Administrador | Veterinario | Recepcionista */
   async getAll(): Promise<Cliente[]> {
     const { data } = await apiClient.get<Cliente[]>(BASE)
+    return data
+  },
+
+  /** Obtiene clientes paginados desde el servidor con orden por recencia. */
+  async getPaged(page = 1, pageSize = 10, search?: string): Promise<PagedResult<Cliente>> {
+    const params = new URLSearchParams({ page: String(page), pageSize: String(pageSize) })
+    if (search) params.append('search', search)
+    const { data } = await apiClient.get<PagedResult<Cliente>>(`${BASE}?${params.toString()}`)
     return data
   },
 

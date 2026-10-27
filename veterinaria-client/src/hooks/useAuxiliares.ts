@@ -46,6 +46,27 @@ export function useRegisterUsuario() {
   })
 }
 
+export function useUpdateUsuario() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, dto }: { id: number; dto: Partial<RegisterRequest> }) =>
+      usuarioService.update(id, dto),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['usuarios'] })
+    },
+  })
+}
+
+export function useDeleteUsuario() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: number) => usuarioService.delete(id),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['usuarios'] })
+    },
+  })
+}
+
 export function useRoles() {
   return useQuery({
     queryKey: ['roles'],

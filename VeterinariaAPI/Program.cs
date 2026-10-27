@@ -119,11 +119,21 @@ app.UseMiddleware<GlobalExceptionMiddleware>();
 // Cabeceras de seguridad HTTP requeridas por OWASP
 app.Use(async (context, next) =>
 {
-    context.Response.Headers["X-Content-Type-Options"] = "nosniff";
-    context.Response.Headers["X-Frame-Options"] = "DENY";
-    context.Response.Headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
+    context.Response.OnStarting(() =>
+    {
+        context.Response.Headers["X-Content-Type-Options"] = "nosniff";
+        context.Response.Headers["X-Frame-Options"] = "DENY";
+        context.Response.Headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
+        context.Response.Headers["Permissions-Policy"] = "accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()";
+        return Task.CompletedTask;
+    });
     await next();
 });
+
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHsts();
+}
 
 if (app.Environment.IsDevelopment())
 {
@@ -134,6 +144,18 @@ if (app.Environment.IsDevelopment())
     if (builder.Configuration.GetValue<bool>("SeedDemoData", false))
     {
         await DbSeeder.SeedAsync(app.Services);
+    }
+
+    // ──────────────────────────────────────────────────────────────────────
+    // RESTABLECIMIENTO MANUAL DE CONTRASEÑAS DEMO (solo Development)
+    // Actívalo UNA SOLA VEZ con: "ResetDemoPasswords": true en appsettings.json
+    // o con:  dotnet user-secrets set "ResetDemoPasswords" "true"
+    // Requiere también: "SeedDemoPassword": "<nueva contraseña>" en config local.
+    // Desactívalo inmediatamente después de arrancar y verificar el login.
+    // ──────────────────────────────────────────────────────────────────────
+    if (builder.Configuration.GetValue<bool>("ResetDemoPasswords", false))
+    {
+        await DbSeeder.ResetDemoPasswordsAsync(app.Services);
     }
 
     // Endpoints de prueba restringidos exclusivamente a entorno Development

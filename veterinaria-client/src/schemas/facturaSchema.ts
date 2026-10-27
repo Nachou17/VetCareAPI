@@ -4,6 +4,7 @@
 // ======================================================
 
 import { z } from 'zod'
+import { isPastDate } from '../utils/date'
 
 export const facturaSchema = z.object({
   clienteId: z
@@ -12,7 +13,8 @@ export const facturaSchema = z.object({
     .positive('El cliente es obligatorio'),
   fechaEmision: z
     .string()
-    .min(1, 'La fecha de emisión es obligatoria'),
+    .min(1, 'La fecha de emisión es obligatoria')
+    .refine((v) => !isPastDate(v), 'La fecha de emisión no puede ser anterior a la fecha actual'),
   subtotal: z
     .number({ invalid_type_error: 'El subtotal debe ser un número' })
     .positive('El monto debe ser mayor a 0'),

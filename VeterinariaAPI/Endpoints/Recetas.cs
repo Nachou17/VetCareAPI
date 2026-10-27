@@ -1,4 +1,6 @@
 using System.ComponentModel.DataAnnotations;
+using Microsoft.EntityFrameworkCore;
+using VeterinariaAPI.Data;
 using VeterinariaAPI.Extensions;
 using VeterinariaAPI.Models;
 using VeterinariaAPI.Repositories;
@@ -11,11 +13,36 @@ namespace VeterinariaAPI.Endpoints
         {
             var recetas = app.MapGroup("/api/v1/recetas").WithTags("Recetas (v1)");
 
-            // API para listar recetas
-            recetas.MapGet("/", async (IRepository<Receta> repo) =>
+            // API para listar recetas con paginación y orden por recencia (FechaEmision descendente)
+            recetas.MapGet("/", async (int? page, int? pageSize, int? consultaId, VeterinariodbContext db) =>
             {
-                var listaRecetas = await repo.ObtenerTodosAsync();
-                return Results.Ok(listaRecetas);
+                var query = db.Recetas.AsNoTracking().AsQueryable();
+
+                if (consultaId.HasValue && consultaId.Value > 0)
+                {
+                    query = query.Where(r => r.ConsultaId == consultaId.Value);
+                }
+
+                // Criterio de recencia: Fecha de emisión descendente, luego ID descendente
+                query = query.OrderByDescending(r => r.FechaEmision).ThenByDescending(r => r.Id);
+
+                if (page.HasValue)
+                {
+                    var p = Math.Max(1, page.Value);
+                    var ps = Math.Clamp(pageSize ?? 10, 1, 100);
+                    var total = await query.CountAsync();
+                    var items = await query.Skip((p - 1) * ps).Take(ps).ToListAsync();
+
+                    return Results.Ok(new PagedResult<Receta>
+                    {
+                        Items = items,
+                        Page = p,
+                        PageSize = ps,
+                        TotalItems = total
+                    });
+                }
+
+                return Results.Ok(await query.ToListAsync());
             }).RequireAuthorization(policy => policy.RequireRole("Administrador", "Veterinario", "Recepcionista"));
 
             // API para obtener receta por ID
@@ -29,6 +56,22 @@ namespace VeterinariaAPI.Endpoints
             recetas.MapPost("/", async (RecetaCreateDto dto, IRepository<Receta> repo) =>
             {
                 var errores = dto.Validar();
+
+                var today = ChileTimeHelper.Today;
+                if (dto.FechaEmision < today)
+                {
+                    errores["FechaEmision"] = new[] { "La fecha de emisión no puede ser anterior a la fecha actual." };
+                }
+
+                if (dto.ValidaHasta < dto.FechaEmision)
+                {
+                    errores["ValidaHasta"] = new[] { "La fecha de vigencia no puede ser anterior a la fecha de emisión." };
+                }
+                else if (dto.ValidaHasta < today)
+                {
+                    errores["ValidaHasta"] = new[] { "La fecha de vigencia no puede ser anterior a la fecha actual." };
+                }
+
                 if (errores.Count > 0)
                 {
                     return Results.ValidationProblem(errores);
@@ -51,6 +94,13 @@ namespace VeterinariaAPI.Endpoints
             recetas.MapPut("/{id:int}", async (int id, RecetaCreateDto dto, IRepository<Receta> repo) =>
             {
                 var errores = dto.Validar();
+
+                var today = ChileTimeHelper.Today;
+                if (dto.ValidaHasta < dto.FechaEmision)
+                {
+                    errores["ValidaHasta"] = new[] { "La fecha de vigencia no puede ser anterior a la fecha de emisión." };
+                }
+
                 if (errores.Count > 0)
                 {
                     return Results.ValidationProblem(errores);

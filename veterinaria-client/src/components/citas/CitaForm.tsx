@@ -9,6 +9,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import type { AxiosError } from 'axios'
 import { citaSchema, type CitaFormValues } from '../../schemas/citaSchema'
+import { getLocalDateTimeString } from '../../utils/date'
 import type { Cita, Paciente, UsuarioAuth, Especialidad, ApiValidationError } from '../../types'
 
 interface CitaFormProps {
@@ -203,6 +204,7 @@ export function CitaForm({
         <input
           id="fechaHora"
           type="datetime-local"
+          min={getLocalDateTimeString()}
           aria-required="true"
           aria-invalid={!!errors.fechaHora}
           aria-describedby={errors.fechaHora ? 'fechaHora-error' : undefined}

@@ -20,7 +20,9 @@ import { useConsultas } from '../hooks/useConsultas'
 import { useInsumos } from '../hooks/useInsumos'
 import { FacturaForm } from '../components/facturacion/FacturaForm'
 import { ConfirmDialog } from '../components/ui/ConfirmDialog'
+import { Pagination } from '../components/ui/Pagination'
 import { SkeletonRow, SkeletonCard } from '../components/ui/SkeletonRow'
+import { paginateList } from '../utils/pagination'
 import type { Factura } from '../types'
 import type { FacturaFormValues } from '../schemas/facturaSchema'
 import {
@@ -53,6 +55,8 @@ export function FacturacionPage() {
   const [toDelete, setToDelete] = useState<Factura | null>(null)
   const [receiptFactura, setReceiptFactura] = useState<Factura | null>(null)
   const [search, setSearch] = useState('')
+  const [page, setPage] = useState(1)
+  const pageSize = 8
   const deleteButtonRef = useRef<HTMLButtonElement | null>(null)
 
   const clienteMap = useMemo(() => new Map(clientes.map((c) => [c.id, c])), [clientes])
@@ -62,16 +66,22 @@ export function FacturacionPage() {
   const totalIva = useMemo(() => facturas.reduce((sum, f) => sum + f.montoImpuestos, 0), [facturas])
   const totalFacturas = facturas.length
 
-  // Filtrado
+  // Filtrado y orden por recencia de emisión descendente
   const filteredFacturas = useMemo(() => {
-    return facturas.filter((f) => {
+    const list = facturas.filter((f) => {
       const cli = clienteMap.get(f.clienteId)
       const cliName = cli?.nombreCompleto.toLowerCase() ?? ''
       const doc = cli?.documentoIdentidad.toLowerCase() ?? ''
       const q = search.toLowerCase()
       return cliName.includes(q) || doc.includes(q) || f.id.toString().includes(q)
     })
+    return list.slice().sort((a, b) => new Date(b.fechaEmision).getTime() - new Date(a.fechaEmision).getTime() || b.id - a.id)
   }, [facturas, search, clienteMap])
+
+  const { pagedItems, totalPages, totalItems, currentPage } = useMemo(
+    () => paginateList(filteredFacturas, page, pageSize),
+    [filteredFacturas, page, pageSize],
+  )
 
   async function handleCreate(
     values: FacturaFormValues & { montoImpuestos: number; montoTotal: number },
@@ -93,6 +103,7 @@ export function FacturacionPage() {
     }
 
     setMode('list')
+    setPage(1)
   }
 
   async function handleDelete() {
@@ -107,7 +118,7 @@ export function FacturacionPage() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="max-w-6xl mx-auto space-y-6">
       {/* Encabezado */}
       <header className="border-b border-gray-200 pb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -199,7 +210,10 @@ export function FacturacionPage() {
               type="search"
               placeholder="Buscar por cliente, RUT o folio de factura..."
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => {
+                setSearch(e.target.value)
+                setPage(1)
+              }}
               aria-label="Buscar facturas"
               className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 min-h-[44px]"
             />
@@ -250,72 +264,156 @@ export function FacturacionPage() {
           )}
 
           {!isLoading && !isError && filteredFacturas.length > 0 && (
-            <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200 text-left text-sm">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th scope="col" className="px-6 py-3 font-semibold text-gray-700">Folio</th>
-                      <th scope="col" className="px-6 py-3 font-semibold text-gray-700">Cliente / RUT</th>
-                      <th scope="col" className="px-6 py-3 font-semibold text-gray-700">Fecha</th>
-                      <th scope="col" className="px-6 py-3 font-semibold text-gray-700">IVA (19%)</th>
-                      <th scope="col" className="px-6 py-3 font-semibold text-gray-700">Total</th>
-                      <th scope="col" className="px-6 py-3 font-semibold text-gray-700 text-right">Acciones</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-200 bg-white">
-                    {filteredFacturas.map((f) => {
-                      const cli = clienteMap.get(f.clienteId)
-                      return (
-                        <tr key={f.id} className="hover:bg-gray-50 transition-colors">
-                          <td className="px-6 py-4 whitespace-nowrap font-mono font-bold text-blue-700">
-                            #{f.id.toString().padStart(5, '0')}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-gray-900 font-medium">
-                            {cli ? (
-                              <div>
-                                <p>{cli.nombreCompleto}</p>
-                                <p className="text-xs text-gray-400 font-normal">{cli.documentoIdentidad}</p>
-                              </div>
-                            ) : (
-                              `Cliente #${f.clienteId}`
-                            )}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-gray-600">
-                            {f.fechaEmision}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-gray-500">
-                            ${f.montoImpuestos.toLocaleString('es-CL')}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap font-bold text-gray-900">
-                            ${f.montoTotal.toLocaleString('es-CL')}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-right space-x-2">
-                            <button
-                              onClick={() => setReceiptFactura(f)}
-                              className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-                              aria-label={`Ver comprobante #${f.id}`}
-                            >
-                              <Printer size={16} />
-                            </button>
+            <div className="space-y-4">
+              {/* ── Vista de Tarjetas para Móviles (< md) ── */}
+              <ul className="md:hidden space-y-3" aria-label="Listado móvil de facturación">
+                {pagedItems.map((f) => {
+                  const cli = clienteMap.get(f.clienteId)
+                  return (
+                    <li
+                      key={f.id}
+                      className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm space-y-3"
+                    >
+                      <div className="flex items-center justify-between border-b border-gray-100 pb-2">
+                        <span className="font-mono font-bold text-blue-700 text-sm">
+                          Folio #{f.id.toString().padStart(5, '0')}
+                        </span>
+                        <span className="text-xs text-gray-500 font-medium">
+                          {f.fechaEmision}
+                        </span>
+                      </div>
 
-                            {canDelete && (
+                      <div className="text-xs space-y-1">
+                        <span className="text-gray-400 block font-medium">Cliente:</span>
+                        <span className="text-gray-900 font-semibold block text-sm">
+                          {cli ? cli.nombreCompleto : `Cliente #${f.clienteId}`}
+                        </span>
+                        {cli?.documentoIdentidad && (
+                          <span className="text-gray-500 font-mono block">
+                            RUT: {cli.documentoIdentidad}
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="flex justify-between items-center text-xs bg-gray-50 p-2.5 rounded-lg border border-gray-100">
+                        <div>
+                          <span className="text-gray-500 block">IVA (19%):</span>
+                          <span className="font-medium text-gray-700">${f.montoImpuestos.toLocaleString('es-CL')}</span>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-gray-500 block">Monto Total:</span>
+                          <span className="font-bold text-gray-900 text-sm">${f.montoTotal.toLocaleString('es-CL')}</span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-end gap-2 pt-1">
+                        <button
+                          type="button"
+                          onClick={() => setReceiptFactura(f)}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg min-h-[36px]"
+                          aria-label={`Ver comprobante #${f.id}`}
+                        >
+                          <Printer size={14} aria-hidden="true" />
+                          <span>Comprobante</span>
+                        </button>
+
+                        {canDelete && (
+                          <button
+                            type="button"
+                            ref={deleteButtonRef}
+                            onClick={() => setToDelete(f)}
+                            className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-red-700 bg-red-50 hover:bg-red-100 rounded-lg min-h-[36px]"
+                            aria-label={`Anular factura #${f.id}`}
+                          >
+                            <Trash2 size={14} aria-hidden="true" />
+                            <span>Anular</span>
+                          </button>
+                        )}
+                      </div>
+                    </li>
+                  )
+                })}
+              </ul>
+
+              {/* ── Vista de Tabla para Escritorio (≥ md) ── */}
+              <div className="hidden md:block bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200 text-left text-sm">
+                    <thead className="bg-gray-50 text-gray-700">
+                      <tr>
+                        <th scope="col" className="px-4 py-3.5 font-semibold">Folio</th>
+                        <th scope="col" className="px-4 py-3.5 font-semibold">Cliente / RUT</th>
+                        <th scope="col" className="px-4 py-3.5 font-semibold">Fecha</th>
+                        <th scope="col" className="px-4 py-3.5 font-semibold">IVA (19%)</th>
+                        <th scope="col" className="px-4 py-3.5 font-semibold">Total</th>
+                        <th scope="col" className="px-4 py-3.5 font-semibold text-right">Acciones</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100 bg-white">
+                      {pagedItems.map((f) => {
+                        const cli = clienteMap.get(f.clienteId)
+                        return (
+                          <tr key={f.id} className="hover:bg-gray-50/80 transition-colors">
+                            <td className="px-4 py-3.5 whitespace-nowrap font-mono font-bold text-blue-700">
+                              #{f.id.toString().padStart(5, '0')}
+                            </td>
+                            <td className="px-4 py-3.5 text-gray-900 font-medium">
+                              {cli ? (
+                                <div>
+                                  <p>{cli.nombreCompleto}</p>
+                                  <p className="text-xs text-gray-400 font-normal">{cli.documentoIdentidad}</p>
+                                </div>
+                              ) : (
+                                `Cliente #${f.clienteId}`
+                              )}
+                            </td>
+                            <td className="px-4 py-3.5 whitespace-nowrap text-gray-600">
+                              {f.fechaEmision}
+                            </td>
+                            <td className="px-4 py-3.5 whitespace-nowrap text-gray-500">
+                              ${f.montoImpuestos.toLocaleString('es-CL')}
+                            </td>
+                            <td className="px-4 py-3.5 whitespace-nowrap font-bold text-gray-900">
+                              ${f.montoTotal.toLocaleString('es-CL')}
+                            </td>
+                            <td className="px-4 py-3.5 whitespace-nowrap text-right space-x-2">
                               <button
-                                ref={deleteButtonRef}
-                                onClick={() => setToDelete(f)}
-                                className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
-                                aria-label={`Anular factura #${f.id}`}
+                                type="button"
+                                onClick={() => setReceiptFactura(f)}
+                                className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 min-h-[36px] min-w-[36px]"
+                                aria-label={`Ver comprobante #${f.id}`}
                               >
-                                <Trash2 size={16} />
+                                <Printer size={16} aria-hidden="true" />
                               </button>
-                            )}
-                          </td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
+
+                              {canDelete && (
+                                <button
+                                  type="button"
+                                  ref={deleteButtonRef}
+                                  onClick={() => setToDelete(f)}
+                                  className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500 min-h-[36px] min-w-[36px]"
+                                  aria-label={`Anular factura #${f.id}`}
+                                >
+                                  <Trash2 size={16} aria-hidden="true" />
+                                </button>
+                              )}
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
               </div>
+
+              <Pagination
+                page={currentPage}
+                totalPages={totalPages}
+                totalItems={totalItems}
+                pageSize={pageSize}
+                onPageChange={setPage}
+                className="px-4 py-4"
+              />
             </div>
           )}
         </>

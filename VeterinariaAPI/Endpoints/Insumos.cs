@@ -1,4 +1,6 @@
 using System.ComponentModel.DataAnnotations;
+using Microsoft.EntityFrameworkCore;
+using VeterinariaAPI.Data;
 using VeterinariaAPI.Extensions;
 using VeterinariaAPI.Models;
 using VeterinariaAPI.Repositories;
@@ -11,11 +13,38 @@ namespace VeterinariaAPI.Endpoints
         {
             var insumos = app.MapGroup("/api/v1/insumos").WithTags("Insumos (v1)");
 
-            // API para listar insumos
-            insumos.MapGet("/", async (IRepository<Insumo> repo) =>
+            // API para listar insumos con paginación y orden por recencia (Id descendente)
+            insumos.MapGet("/", async (int? page, int? pageSize, string? search, VeterinariodbContext db) =>
             {
-                var listaInsumos = await repo.ObtenerTodosAsync();
-                return Results.Ok(listaInsumos);
+                var query = db.Insumos.AsNoTracking().AsQueryable();
+
+                if (!string.IsNullOrWhiteSpace(search))
+                {
+                    var q = search.Trim().ToLower();
+                    query = query.Where(i => i.NombreProducto.ToLower().Contains(q) ||
+                                             i.Tipo.ToLower().Contains(q));
+                }
+
+                // Criterio de recencia: ID descendente
+                query = query.OrderByDescending(i => i.Id);
+
+                if (page.HasValue)
+                {
+                    var p = Math.Max(1, page.Value);
+                    var ps = Math.Clamp(pageSize ?? 10, 1, 100);
+                    var total = await query.CountAsync();
+                    var items = await query.Skip((p - 1) * ps).Take(ps).ToListAsync();
+
+                    return Results.Ok(new PagedResult<Insumo>
+                    {
+                        Items = items,
+                        Page = p,
+                        PageSize = ps,
+                        TotalItems = total
+                    });
+                }
+
+                return Results.Ok(await query.ToListAsync());
             }).RequireAuthorization(policy => policy.RequireRole("Administrador", "Veterinario", "Recepcionista"));
 
             // API para obtener insumo por ID

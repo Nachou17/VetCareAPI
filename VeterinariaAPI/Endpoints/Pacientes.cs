@@ -1,4 +1,6 @@
 using System.ComponentModel.DataAnnotations;
+using Microsoft.EntityFrameworkCore;
+using VeterinariaAPI.Data;
 using VeterinariaAPI.Extensions;
 using VeterinariaAPI.Models;
 using VeterinariaAPI.Repositories;
@@ -11,11 +13,44 @@ namespace VeterinariaAPI.Endpoints
         {
             var pacientes = app.MapGroup("/api/v1/pacientes").WithTags("Pacientes (v1)");
 
-            // API para listar pacientes
-            pacientes.MapGet("/", async (IRepository<Paciente> repo) =>
+            // API para listar pacientes con paginación y orden por recencia (Id descendente)
+            pacientes.MapGet("/", async (int? page, int? pageSize, string? search, int? clienteId, VeterinariodbContext db) =>
             {
-                var listaPacientes = await repo.ObtenerTodosAsync();
-                return Results.Ok(listaPacientes);
+                var query = db.Pacientes.AsNoTracking().AsQueryable();
+
+                if (!string.IsNullOrWhiteSpace(search))
+                {
+                    var q = search.Trim().ToLower();
+                    query = query.Where(p => p.Nombre.ToLower().Contains(q) ||
+                                             p.Especie.ToLower().Contains(q) ||
+                                             (p.Raza != null && p.Raza.ToLower().Contains(q)));
+                }
+
+                if (clienteId.HasValue && clienteId.Value > 0)
+                {
+                    query = query.Where(p => p.ClienteId == clienteId.Value);
+                }
+
+                // Criterio de recencia: ID descendente
+                query = query.OrderByDescending(p => p.Id);
+
+                if (page.HasValue)
+                {
+                    var p = Math.Max(1, page.Value);
+                    var ps = Math.Clamp(pageSize ?? 10, 1, 100);
+                    var total = await query.CountAsync();
+                    var items = await query.Skip((p - 1) * ps).Take(ps).ToListAsync();
+
+                    return Results.Ok(new PagedResult<Paciente>
+                    {
+                        Items = items,
+                        Page = p,
+                        PageSize = ps,
+                        TotalItems = total
+                    });
+                }
+
+                return Results.Ok(await query.ToListAsync());
             }).RequireAuthorization(policy => policy.RequireRole("Administrador", "Veterinario", "Recepcionista"));
 
             // API para obtener un paciente por ID

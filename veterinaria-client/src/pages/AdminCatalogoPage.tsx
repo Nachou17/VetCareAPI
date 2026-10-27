@@ -6,7 +6,9 @@
 
 import { useState, useMemo } from 'react'
 import { useEspecialidades, useCreateEspecialidad } from '../hooks/useAuxiliares'
+import { Pagination } from '../components/ui/Pagination'
 import { SkeletonRow } from '../components/ui/SkeletonRow'
+import { paginateList } from '../utils/pagination'
 import {
   Award,
   Plus,
@@ -15,6 +17,7 @@ import {
   ArrowLeft,
   DollarSign,
   Tag,
+  Search,
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
@@ -27,6 +30,21 @@ export function AdminCatalogoPage() {
   const [touched, setTouched] = useState<Record<string, boolean>>({})
   const [espSuccess, setEspSuccess] = useState(false)
   const [espError, setEspError] = useState('')
+  const [search, setSearch] = useState('')
+  const [page, setPage] = useState(1)
+  const pageSize = 6
+
+  // ── Filtro y orden por recencia (ID descendente) ───────────
+  const filteredEspecialidades = useMemo(() => {
+    const q = search.toLowerCase().trim()
+    const list = especialidades.filter((e) => e.nombre.toLowerCase().includes(q))
+    return list.slice().sort((a, b) => b.id - a.id)
+  }, [especialidades, search])
+
+  const { pagedItems, totalPages, totalItems, currentPage } = useMemo(
+    () => paginateList(filteredEspecialidades, page, pageSize),
+    [filteredEspecialidades, page, pageSize],
+  )
 
   // ── Validaciones estrictas en cliente ─────────────────────
   const errors = useMemo(() => {
@@ -69,6 +87,7 @@ export function AdminCatalogoPage() {
       setEspNombre('')
       setEspCosto(25000)
       setTouched({})
+      setPage(1)
     } catch {
       setEspError('Error al guardar la especialidad médica. Comprueba los datos.')
     }
@@ -79,7 +98,7 @@ export function AdminCatalogoPage() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="max-w-6xl mx-auto space-y-6">
       {/* ── Encabezado alineado con la tarjeta y el contenedor principal ── */}
       <header className="border-b border-gray-200 pb-4">
         <Link
@@ -222,15 +241,69 @@ export function AdminCatalogoPage() {
       {/* ── Tabla de Especialidades con Filas Alternadas y Badges Elegantes ── */}
       <section aria-labelledby="tabla-catalogo-heading">
         <div className="bg-white rounded-xl border border-slate-200/80 shadow-lg overflow-hidden">
-          <div className="px-6 py-4 bg-slate-50 border-b border-gray-200 flex items-center justify-between">
+          <div className="px-6 py-4 bg-slate-50 border-b border-gray-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <h2 id="tabla-catalogo-heading" className="text-sm font-bold text-gray-800 uppercase tracking-wider flex items-center gap-2">
               <Award size={18} className="text-emerald-600" />
-              Especialidades Disponibles ({especialidades.length})
+              Especialidades Disponibles ({filteredEspecialidades.length} de {especialidades.length})
             </h2>
-            <span className="text-xs text-gray-500 font-medium">Tarifario oficial</span>
+            <div className="relative w-full sm:w-64">
+              <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input
+                type="search"
+                value={search}
+                onChange={(e) => {
+                  setSearch(e.target.value)
+                  setPage(1)
+                }}
+                placeholder="Buscar especialidad..."
+                aria-label="Buscar especialidad"
+                className="w-full pl-9 pr-3 py-1.5 text-xs border border-gray-300 rounded-lg bg-white focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 min-h-[36px]"
+              />
+            </div>
           </div>
 
-          <div className="overflow-x-auto">
+          {/* ── Vista móvil en tarjetas (< md) ── */}
+          <div className="md:hidden p-4">
+            {loadingEsp ? (
+              <div className="space-y-3" role="status" aria-label="Cargando catálogo">
+                <div className="h-16 bg-slate-100 rounded-lg animate-pulse" />
+                <div className="h-16 bg-slate-100 rounded-lg animate-pulse" />
+              </div>
+            ) : pagedItems.length === 0 ? (
+              <p className="py-8 text-center text-sm text-gray-400">
+                {search ? 'No se encontraron especialidades con ese criterio.' : 'No hay especialidades registradas en el catálogo.'}
+              </p>
+            ) : (
+              <ul className="space-y-3" aria-label="Listado móvil de catálogo">
+                {pagedItems.map((e) => (
+                  <li
+                    key={e.id}
+                    className="bg-white rounded-xl border border-gray-200 p-4 shadow-xs space-y-2"
+                  >
+                    <div className="flex items-center justify-between gap-2 border-b border-gray-100 pb-2">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-700 font-bold text-xs flex items-center justify-center shrink-0">
+                          {e.nombre.charAt(0).toUpperCase()}
+                        </div>
+                        <span className="font-semibold text-gray-900 text-sm truncate">{e.nombre}</span>
+                      </div>
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200 shrink-0">
+                        Vigente
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between text-xs pt-1">
+                      <span className="text-gray-500 font-medium">Arancel Base:</span>
+                      <span className="font-bold text-gray-900 text-sm">${e.costoBase.toLocaleString('es-CL')}</span>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          {/* ── Vista de tabla para escritorio (≥ md) ── */}
+          <div className="hidden md:block overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200 text-left text-sm">
               <thead className="bg-slate-50/90 text-gray-700 font-semibold text-xs uppercase tracking-wider">
                 <tr>
@@ -242,14 +315,14 @@ export function AdminCatalogoPage() {
               <tbody className="divide-y divide-gray-100">
                 {loadingEsp ? (
                   <SkeletonRow cols={3} />
-                ) : especialidades.length === 0 ? (
+                ) : pagedItems.length === 0 ? (
                   <tr>
                     <td colSpan={3} className="px-6 py-10 text-center text-sm text-gray-400">
-                      No hay especialidades registradas en el catálogo.
+                      {search ? 'No se encontraron especialidades con ese criterio.' : 'No hay especialidades registradas en el catálogo.'}
                     </td>
                   </tr>
                 ) : (
-                  especialidades.map((e) => (
+                  pagedItems.map((e) => (
                     <tr
                       key={e.id}
                       className="odd:bg-white even:bg-slate-50/60 hover:bg-emerald-50/50 transition-colors"
@@ -276,6 +349,15 @@ export function AdminCatalogoPage() {
               </tbody>
             </table>
           </div>
+
+          <Pagination
+            page={currentPage}
+            totalPages={totalPages}
+            totalItems={totalItems}
+            pageSize={pageSize}
+            onPageChange={setPage}
+            className="px-6 py-4 border-t border-gray-200"
+          />
         </div>
       </section>
     </div>

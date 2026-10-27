@@ -21,7 +21,9 @@ import { usePacientes } from '../hooks/usePacientes'
 import { useInsumos } from '../hooks/useInsumos'
 import { RecetaForm } from '../components/recetas/RecetaForm'
 import { ConfirmDialog } from '../components/ui/ConfirmDialog'
+import { Pagination } from '../components/ui/Pagination'
 import { SkeletonRow, SkeletonCard } from '../components/ui/SkeletonRow'
+import { paginateList } from '../utils/pagination'
 import type { Receta, DetalleReceta } from '../types'
 import type { RecetaFormValues } from '../schemas/recetaSchema'
 import { Plus, Trash2, Search, RefreshCw, Pill, Printer, FileCheck } from 'lucide-react'
@@ -45,6 +47,8 @@ export function RecetasPage() {
   const [toDelete, setToDelete] = useState<Receta | null>(null)
   const [printReceta, setPrintReceta] = useState<{ receta: Receta; detalle?: DetalleReceta } | null>(null)
   const [search, setSearch] = useState('')
+  const [page, setPage] = useState(1)
+  const pageSize = 9
   const deleteButtonRef = useRef<HTMLButtonElement | null>(null)
 
   // Mapas auxiliares
@@ -53,9 +57,9 @@ export function RecetasPage() {
   const insumoMap = useMemo(() => new Map(insumos.map((i) => [i.id, i])), [insumos])
   const detalleMap = useMemo(() => new Map(detalles.map((d) => [d.recetaId, d])), [detalles])
 
-  // Filtrado
+  // Filtrado y orden por fecha de emisión descendente
   const filteredRecetas = useMemo(() => {
-    return recetas.filter((r) => {
+    const list = recetas.filter((r) => {
       const consulta = consultaMap.get(r.consultaId)
       const paciente = consulta ? pacienteMap.get(consulta.pacienteId) : undefined
       const det = detalleMap.get(r.id)
@@ -67,7 +71,13 @@ export function RecetasPage() {
 
       return pacName.includes(q) || insName.includes(q) || r.id.toString().includes(q)
     })
+    return list.slice().sort((a, b) => new Date(b.fechaEmision).getTime() - new Date(a.fechaEmision).getTime() || b.id - a.id)
   }, [recetas, search, consultaMap, pacienteMap, detalleMap, insumoMap])
+
+  const { pagedItems, totalPages, totalItems, currentPage } = useMemo(
+    () => paginateList(filteredRecetas, page, pageSize),
+    [filteredRecetas, page, pageSize],
+  )
 
   async function handleCreate(values: RecetaFormValues) {
     // 1. Crear cabecera de la receta
@@ -88,6 +98,7 @@ export function RecetasPage() {
     }
 
     setMode('list')
+    setPage(1)
   }
 
   async function handleDelete() {
@@ -102,7 +113,7 @@ export function RecetasPage() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="max-w-6xl mx-auto space-y-6">
       {/* Encabezado */}
       <header className="border-b border-gray-200 pb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -159,7 +170,10 @@ export function RecetasPage() {
               type="search"
               placeholder="Buscar por paciente, medicamento o N° de receta..."
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => {
+                setSearch(e.target.value)
+                setPage(1)
+              }}
               aria-label="Buscar recetas"
               className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 min-h-[44px]"
             />
@@ -210,81 +224,91 @@ export function RecetasPage() {
           )}
 
           {!isLoading && !isError && filteredRecetas.length > 0 && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredRecetas.map((r) => {
-                const con = consultaMap.get(r.consultaId)
-                const pac = con ? pacienteMap.get(con.pacienteId) : undefined
-                const det = detalleMap.get(r.id)
-                const ins = det ? insumoMap.get(det.insumoId) : undefined
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {pagedItems.map((r) => {
+                  const con = consultaMap.get(r.consultaId)
+                  const pac = con ? pacienteMap.get(con.pacienteId) : undefined
+                  const det = detalleMap.get(r.id)
+                  const ins = det ? insumoMap.get(det.insumoId) : undefined
 
-                return (
-                  <article
-                    key={r.id}
-                    className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between"
-                  >
-                    <div>
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700">
-                          <FileCheck size={12} /> Receta #{r.id}
-                        </span>
-                        <span className="text-xs text-gray-500">
-                          Emitida: {r.fechaEmision}
-                        </span>
-                      </div>
-
-                      <h3 className="text-base font-bold text-gray-900">
-                        {pac ? `${pac.nombre} (${pac.especie})` : `Paciente Consulta #${r.consultaId}`}
-                      </h3>
-
-                      <div className="mt-3 p-3 bg-gray-50 rounded-lg border border-gray-100 space-y-2">
-                        <div>
-                          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Medicamento Indicado:</p>
-                          <p className="text-sm font-semibold text-blue-700">
-                            {ins ? ins.nombreProducto : 'Medicamento prescrito'}
-                          </p>
+                  return (
+                    <article
+                      key={r.id}
+                      className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between"
+                    >
+                      <div>
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700">
+                            <FileCheck size={12} /> Receta #{r.id}
+                          </span>
+                          <span className="text-xs text-gray-500">
+                            Emitida: {r.fechaEmision}
+                          </span>
                         </div>
 
-                        {det && (
-                          <>
-                            <div>
-                              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Posología:</p>
-                              <p className="text-xs text-gray-700">{det.dosis}</p>
-                            </div>
-                            <p className="text-xs text-gray-500">
-                              Tratamiento: <strong className="text-gray-800">{det.duracionDias} días</strong>
+                        <h3 className="text-base font-bold text-gray-900">
+                          {pac ? `${pac.nombre} (${pac.especie})` : `Paciente Consulta #${r.consultaId}`}
+                        </h3>
+
+                        <div className="mt-3 p-3 bg-gray-50 rounded-lg border border-gray-100 space-y-2">
+                          <div>
+                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Medicamento Indicado:</p>
+                            <p className="text-sm font-semibold text-blue-700">
+                              {ins ? ins.nombreProducto : 'Medicamento prescrito'}
                             </p>
-                          </>
-                        )}
+                          </div>
+
+                          {det && (
+                            <>
+                              <div>
+                                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Posología:</p>
+                                <p className="text-xs text-gray-700">{det.dosis}</p>
+                              </div>
+                              <p className="text-xs text-gray-500">
+                                Tratamiento: <strong className="text-gray-800">{det.duracionDias} días</strong>
+                              </p>
+                            </>
+                          )}
+                        </div>
+
+                        <p className="text-xs text-gray-400 mt-2">
+                          Vigencia hasta: <span className="font-medium text-gray-600">{r.validaHasta}</span>
+                        </p>
                       </div>
 
-                      <p className="text-xs text-gray-400 mt-2">
-                        Vigencia hasta: <span className="font-medium text-gray-600">{r.validaHasta}</span>
-                      </p>
-                    </div>
-
-                    <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between">
-                      <button
-                        onClick={() => setPrintReceta({ receta: r, detalle: det })}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 min-h-[36px]"
-                        aria-label={`Imprimir receta médica #${r.id}`}
-                      >
-                        <Printer size={14} /> Imprimir Receta
-                      </button>
-
-                      {canDelete && (
+                      <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between">
                         <button
-                          ref={deleteButtonRef}
-                          onClick={() => setToDelete(r)}
-                          className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
-                          aria-label={`Eliminar receta #${r.id}`}
+                          onClick={() => setPrintReceta({ receta: r, detalle: det })}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 min-h-[36px]"
+                          aria-label={`Imprimir receta médica #${r.id}`}
                         >
-                          <Trash2 size={16} />
+                          <Printer size={14} /> Imprimir Receta
                         </button>
-                      )}
-                    </div>
-                  </article>
-                )
-              })}
+
+                        {canDelete && (
+                          <button
+                            ref={deleteButtonRef}
+                            onClick={() => setToDelete(r)}
+                            className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
+                            aria-label={`Eliminar receta #${r.id}`}
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        )}
+                      </div>
+                    </article>
+                  )
+                })}
+              </div>
+
+              <Pagination
+                page={currentPage}
+                totalPages={totalPages}
+                totalItems={totalItems}
+                pageSize={pageSize}
+                onPageChange={setPage}
+              />
             </div>
           )}
         </>

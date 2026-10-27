@@ -1,4 +1,6 @@
 using System.ComponentModel.DataAnnotations;
+using Microsoft.EntityFrameworkCore;
+using VeterinariaAPI.Data;
 using VeterinariaAPI.Extensions;
 using VeterinariaAPI.Models;
 using VeterinariaAPI.Repositories;
@@ -11,11 +13,43 @@ namespace VeterinariaAPI.Endpoints
         {
             var consultas = app.MapGroup("/api/v1/consultas").WithTags("Consultas (v1)");
 
-            // API para listar consultas
-            consultas.MapGet("/", async (IRepository<Consulta> repo) =>
+            // API para listar consultas con paginación y orden por recencia (Id descendente)
+            consultas.MapGet("/", async (int? page, int? pageSize, string? search, int? pacienteId, VeterinariodbContext db) =>
             {
-                var listaConsultas = await repo.ObtenerTodosAsync();
-                return Results.Ok(listaConsultas);
+                var query = db.Consultas.AsNoTracking().AsQueryable();
+
+                if (!string.IsNullOrWhiteSpace(search))
+                {
+                    var q = search.Trim().ToLower();
+                    query = query.Where(c => c.Motivo.ToLower().Contains(q) ||
+                                             (c.Diagnostico != null && c.Diagnostico.ToLower().Contains(q)));
+                }
+
+                if (pacienteId.HasValue && pacienteId.Value > 0)
+                {
+                    query = query.Where(c => c.PacienteId == pacienteId.Value);
+                }
+
+                // Criterio de recencia: ID descendente
+                query = query.OrderByDescending(c => c.Id);
+
+                if (page.HasValue)
+                {
+                    var p = Math.Max(1, page.Value);
+                    var ps = Math.Clamp(pageSize ?? 10, 1, 100);
+                    var total = await query.CountAsync();
+                    var items = await query.Skip((p - 1) * ps).Take(ps).ToListAsync();
+
+                    return Results.Ok(new PagedResult<Consulta>
+                    {
+                        Items = items,
+                        Page = p,
+                        PageSize = ps,
+                        TotalItems = total
+                    });
+                }
+
+                return Results.Ok(await query.ToListAsync());
             }).RequireAuthorization(policy => policy.RequireRole("Administrador", "Veterinario", "Recepcionista"));
 
             // API para obtener consulta por ID

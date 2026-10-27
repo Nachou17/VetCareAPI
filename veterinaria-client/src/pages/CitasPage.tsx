@@ -23,8 +23,10 @@ import { useUsuarios, useEspecialidades } from '../hooks/useAuxiliares'
 import { CitaForm } from '../components/citas/CitaForm'
 import { CitaStatusBadge } from '../components/citas/CitaStatusBadge'
 import { ConfirmDialog } from '../components/ui/ConfirmDialog'
+import { Pagination } from '../components/ui/Pagination'
 import { Toast, type ToastMessage } from '../components/ui/Toast'
 import { SkeletonRow, SkeletonCard } from '../components/ui/SkeletonRow'
+import { paginateList } from '../utils/pagination'
 import type { Cita } from '../types'
 import type { CitaFormValues } from '../schemas/citaSchema'
 import { Plus, Pencil, Trash2, Search, RefreshCw, Calendar, Clock } from 'lucide-react'
@@ -50,6 +52,8 @@ export function CitasPage() {
   const [toDelete, setToDelete] = useState<Cita | null>(null)
   const [search, setSearch] = useState('')
   const [filterEstado, setFilterEstado] = useState<string>('todos')
+  const [page, setPage] = useState(1)
+  const pageSize = 8
   const [toast, setToast] = useState<ToastMessage | null>(null)
   const deleteButtonRef = useRef<HTMLButtonElement | null>(null)
 
@@ -58,9 +62,9 @@ export function CitasPage() {
   const usuarioMap = useMemo(() => new Map(usuarios.map((u) => [u.id, u])), [usuarios])
   const especialidadMap = useMemo(() => new Map(especialidades.map((e) => [e.id, e])), [especialidades])
 
-  // Filtrado de citas
+  // Filtrado de citas y orden de recencia (más recientes primero)
   const filteredCitas = useMemo(() => {
-    return citas.filter((c) => {
+    const list = citas.filter((c) => {
       const matchEstado = filterEstado === 'todos' || c.estado === filterEstado
       const pac = pacienteMap.get(c.pacienteId)?.nombre.toLowerCase() ?? ''
       const vet = usuarioMap.get(c.usuarioId)?.nombreCompleto.toLowerCase() ?? ''
@@ -68,11 +72,18 @@ export function CitasPage() {
       const matchSearch = pac.includes(q) || vet.includes(q) || c.estado.toLowerCase().includes(q)
       return matchEstado && matchSearch
     })
+    return list.slice().sort((a, b) => new Date(b.fechaHora).getTime() - new Date(a.fechaHora).getTime() || b.id - a.id)
   }, [citas, filterEstado, search, pacienteMap, usuarioMap])
+
+  const { pagedItems, totalPages, totalItems, currentPage } = useMemo(
+    () => paginateList(filteredCitas, page, pageSize),
+    [filteredCitas, page, pageSize],
+  )
 
   async function handleCreate(values: CitaFormValues) {
     await createMutation.mutateAsync(values)
     setMode('list')
+    setPage(1)
     setToast({
       id: Date.now().toString(),
       title: 'Cita Agendada',
@@ -135,7 +146,7 @@ export function CitasPage() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="max-w-6xl mx-auto space-y-6">
       {/* Encabezado */}
       <header className="border-b border-gray-200 pb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -196,7 +207,10 @@ export function CitasPage() {
               type="search"
               placeholder="Buscar por paciente, profesional o estado..."
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => {
+                setSearch(e.target.value)
+                setPage(1)
+              }}
               aria-label="Buscar citas"
               className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 min-h-[44px]"
             />
@@ -204,7 +218,10 @@ export function CitasPage() {
           <div className="flex gap-2">
             <select
               value={filterEstado}
-              onChange={(e) => setFilterEstado(e.target.value)}
+              onChange={(e) => {
+                setFilterEstado(e.target.value)
+                setPage(1)
+              }}
               aria-label="Filtrar por estado"
               className="border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-700 bg-white focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 min-h-[44px]"
             >
@@ -264,81 +281,183 @@ export function CitasPage() {
           )}
 
           {!isLoading && !isError && filteredCitas.length > 0 && (
-            <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200 text-left text-sm">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th scope="col" className="px-6 py-3 font-semibold text-gray-700">Fecha y Hora</th>
-                      <th scope="col" className="px-6 py-3 font-semibold text-gray-700">Paciente</th>
-                      <th scope="col" className="px-6 py-3 font-semibold text-gray-700">Profesional</th>
-                      <th scope="col" className="px-6 py-3 font-semibold text-gray-700">Especialidad</th>
-                      <th scope="col" className="px-6 py-3 font-semibold text-gray-700">Estado Rápido</th>
-                      <th scope="col" className="px-6 py-3 font-semibold text-gray-700 text-right">Acciones</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-200 bg-white">
-                    {filteredCitas.map((c) => {
-                      const pac = pacienteMap.get(c.pacienteId)
-                      const vet = usuarioMap.get(c.usuarioId)
-                      const esp = especialidadMap.get(c.especialidadId)
-                      const fechaFormatted = new Date(c.fechaHora).toLocaleString('es-CL', {
-                        dateStyle: 'medium',
-                        timeStyle: 'short',
-                      })
+            <div className="space-y-4">
+              {/* ── Vista de Tarjetas para Móviles (< md) ── */}
+              <ul className="md:hidden space-y-3" aria-label="Listado móvil de citas médicas">
+                {pagedItems.map((c) => {
+                  const pac = pacienteMap.get(c.pacienteId)
+                  const vet = usuarioMap.get(c.usuarioId)
+                  const esp = especialidadMap.get(c.especialidadId)
+                  const fechaFormatted = new Date(c.fechaHora).toLocaleString('es-CL', {
+                    dateStyle: 'medium',
+                    timeStyle: 'short',
+                  })
 
-                      return (
-                        <tr key={c.id} className="hover:bg-gray-50 transition-colors">
-                          <td className="px-6 py-4 whitespace-nowrap text-gray-900 font-medium flex items-center gap-2">
-                            <Clock size={16} className="text-blue-500 shrink-0" />
-                            {fechaFormatted}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-gray-800">
-                            {pac ? `${pac.nombre} (${pac.especie})` : `Paciente #${c.pacienteId}`}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-gray-700">
-                            {vet ? vet.nombreCompleto : `Veterinario #${c.usuarioId}`}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-gray-600">
-                            {esp ? esp.nombre : `Especialidad #${c.especialidadId}`}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <CitaStatusBadge
-                              cita={c}
-                              disabled={!canWrite}
-                              onStatusChange={(newStatus) => handleQuickStatusChange(c, newStatus)}
-                            />
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-right space-x-2">
-                            {canWrite && (
-                              <button
-                                onClick={() => {
-                                  setEditing(c)
-                                  setMode('edit')
-                                }}
-                                className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-                                aria-label={`Editar cita #${c.id}`}
-                              >
-                                <Pencil size={16} />
-                              </button>
-                            )}
-                            {canDelete && (
-                              <button
-                                ref={deleteButtonRef}
-                                onClick={() => setToDelete(c)}
-                                className="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
-                                aria-label={`Eliminar cita #${c.id}`}
-                              >
-                                <Trash2 size={16} />
-                              </button>
-                            )}
-                          </td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
+                  return (
+                    <li
+                      key={c.id}
+                      className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm space-y-3"
+                    >
+                      <div className="flex items-start justify-between gap-2 border-b border-gray-100 pb-2">
+                        <div className="flex items-center gap-1.5 text-blue-700 font-semibold text-sm">
+                          <Clock size={16} className="text-blue-500 shrink-0" aria-hidden="true" />
+                          <span>{fechaFormatted}</span>
+                        </div>
+                        <CitaStatusBadge
+                          cita={c}
+                          disabled={!canWrite}
+                          onStatusChange={(newStatus) => handleQuickStatusChange(c, newStatus)}
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        <div>
+                          <span className="text-gray-400 block font-medium">Paciente:</span>
+                          <span className="text-gray-800 font-semibold truncate block" title={pac ? `${pac.nombre} (${pac.especie})` : undefined}>
+                            {pac ? `${pac.nombre} (${pac.especie})` : `#${c.pacienteId}`}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-gray-400 block font-medium">Profesional:</span>
+                          <span className="text-gray-800 font-medium truncate block" title={vet?.nombreCompleto}>
+                            {vet ? vet.nombreCompleto : `#${c.usuarioId}`}
+                          </span>
+                        </div>
+                        <div className="col-span-2">
+                          <span className="text-gray-400 block font-medium">Especialidad:</span>
+                          <span className="text-gray-700 font-medium">{esp ? esp.nombre : `#${c.especialidadId}`}</span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-end gap-2 pt-2 border-t border-gray-100">
+                        {canWrite && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditing(c)
+                              setMode('edit')
+                            }}
+                            className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg min-h-[36px]"
+                            aria-label={`Editar cita #${c.id}`}
+                          >
+                            <Pencil size={14} aria-hidden="true" />
+                            <span>Editar</span>
+                          </button>
+                        )}
+                        {canDelete && (
+                          <button
+                            type="button"
+                            ref={deleteButtonRef}
+                            onClick={() => setToDelete(c)}
+                            className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-red-700 bg-red-50 hover:bg-red-100 rounded-lg min-h-[36px]"
+                            aria-label={`Eliminar cita #${c.id}`}
+                          >
+                            <Trash2 size={14} aria-hidden="true" />
+                            <span>Eliminar</span>
+                          </button>
+                        )}
+                      </div>
+                    </li>
+                  )
+                })}
+              </ul>
+
+              {/* ── Vista de Tabla para Escritorio (≥ md) ── */}
+              <div className="hidden md:block bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200 text-left text-sm">
+                    <thead className="bg-gray-50 text-gray-700">
+                      <tr>
+                        <th scope="col" className="px-4 py-3.5 font-semibold">Fecha y Hora</th>
+                        <th scope="col" className="px-4 py-3.5 font-semibold">Paciente</th>
+                        <th scope="col" className="px-4 py-3.5 font-semibold">Profesional</th>
+                        <th scope="col" className="px-4 py-3.5 font-semibold">Especialidad</th>
+                        <th scope="col" className="px-4 py-3.5 font-semibold">Estado Rápido</th>
+                        <th scope="col" className="px-4 py-3.5 font-semibold text-right">Acciones</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100 bg-white">
+                      {pagedItems.map((c) => {
+                        const pac = pacienteMap.get(c.pacienteId)
+                        const vet = usuarioMap.get(c.usuarioId)
+                        const esp = especialidadMap.get(c.especialidadId)
+                        const fechaFormatted = new Date(c.fechaHora).toLocaleString('es-CL', {
+                          dateStyle: 'medium',
+                          timeStyle: 'short',
+                        })
+
+                        return (
+                          <tr key={c.id} className="hover:bg-gray-50/80 transition-colors">
+                            <td className="px-4 py-3.5 text-gray-900 font-medium">
+                              <div className="flex items-center gap-2">
+                                <Clock size={15} className="text-blue-500 shrink-0" aria-hidden="true" />
+                                <span className="whitespace-nowrap">{fechaFormatted}</span>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3.5 text-gray-800">
+                              <span className="font-medium" title={pac ? `${pac.nombre} (${pac.especie})` : undefined}>
+                                {pac ? `${pac.nombre} (${pac.especie})` : `Paciente #${c.pacienteId}`}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3.5 text-gray-700">
+                              <span title={vet?.nombreCompleto}>
+                                {vet ? vet.nombreCompleto : `Veterinario #${c.usuarioId}`}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3.5 text-gray-600">
+                              {esp ? esp.nombre : `Especialidad #${c.especialidadId}`}
+                            </td>
+                            <td className="px-4 py-3.5">
+                              <CitaStatusBadge
+                                cita={c}
+                                disabled={!canWrite}
+                                onStatusChange={(newStatus) => handleQuickStatusChange(c, newStatus)}
+                              />
+                            </td>
+                            <td className="px-4 py-3.5 text-right whitespace-nowrap">
+                              <div className="inline-flex gap-1 justify-end">
+                                {canWrite && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setEditing(c)
+                                      setMode('edit')
+                                    }}
+                                    className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 min-h-[36px] min-w-[36px]"
+                                    aria-label={`Editar cita #${c.id}`}
+                                  >
+                                    <Pencil size={15} aria-hidden="true" />
+                                  </button>
+                                )}
+                                {canDelete && (
+                                  <button
+                                    type="button"
+                                    ref={deleteButtonRef}
+                                    onClick={() => setToDelete(c)}
+                                    className="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500 min-h-[36px] min-w-[36px]"
+                                    aria-label={`Eliminar cita #${c.id}`}
+                                  >
+                                    <Trash2 size={15} aria-hidden="true" />
+                                  </button>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
               </div>
+
+              <Pagination
+                page={currentPage}
+                totalPages={totalPages}
+                totalItems={totalItems}
+                pageSize={pageSize}
+                onPageChange={setPage}
+                className="px-4 py-4"
+              />
             </div>
           )}
         </>

@@ -20,7 +20,9 @@ import {
 import { useClientes } from '../hooks/useClientes'
 import { PacienteForm } from '../components/pacientes/PacienteForm'
 import { ConfirmDialog } from '../components/ui/ConfirmDialog'
+import { Pagination } from '../components/ui/Pagination'
 import { SkeletonRow, SkeletonCard } from '../components/ui/SkeletonRow'
+import { paginateList } from '../utils/pagination'
 import type { Paciente } from '../types'
 import type { PacienteFormValues } from '../schemas/pacienteSchema'
 import { Plus, Pencil, Trash2, Search, RefreshCw, PawPrint, Eye, ArrowLeft } from 'lucide-react'
@@ -43,19 +45,27 @@ export function PacientesPage() {
   const [editing, setEditing] = useState<Paciente | undefined>()
   const [toDelete, setToDelete] = useState<Paciente | null>(null)
   const [search, setSearch] = useState('')
+  const [page, setPage] = useState(1)
+  const pageSize = 8
   const deleteButtonRef = useRef<HTMLButtonElement | null>(null)
 
-  // ── Filtro en tiempo real ─────────────────────────────────
+  // ── Filtro en tiempo real y orden de recencia ─────────────
   const filtered = useMemo(() => {
     if (!pacientes) return []
-    const q = search.toLowerCase()
-    return pacientes.filter(
+    const q = search.toLowerCase().trim()
+    const list = pacientes.filter(
       (p) =>
         p.nombre.toLowerCase().includes(q) ||
         p.especie.toLowerCase().includes(q) ||
         (p.raza ?? '').toLowerCase().includes(q),
     )
+    return list.slice().sort((a, b) => b.id - a.id)
   }, [pacientes, search])
+
+  const { pagedItems, totalPages, totalItems, currentPage } = useMemo(
+    () => paginateList(filtered, page, pageSize),
+    [filtered, page, pageSize],
+  )
 
   // ── Handlers ─────────────────────────────────────────────
   async function handleCreate(values: PacienteFormValues) {
@@ -68,6 +78,7 @@ export function PacientesPage() {
       alergias: values.alergias || undefined,
     })
     setMode('list')
+    setPage(1)
   }
 
   async function handleUpdate(values: PacienteFormValues) {
@@ -150,7 +161,7 @@ export function PacientesPage() {
 
   // ── Vista de lista ────────────────────────────────────────
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="max-w-6xl mx-auto space-y-6">
       {/* Encabezado */}
       <header className="border-b border-gray-200 pb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -198,7 +209,10 @@ export function PacientesPage() {
           type="search"
           placeholder="Buscar por nombre, especie o raza…"
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e) => {
+            setSearch(e.target.value)
+            setPage(1)
+          }}
           className="w-full pl-9 pr-4 py-2.5 min-h-[44px] border border-gray-300 rounded-lg text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
           aria-controls="pacientes-list"
         />
@@ -261,7 +275,7 @@ export function PacientesPage() {
         <section aria-label="Lista de pacientes" id="pacientes-list">
           {/* Tarjetas — móvil */}
           <ul className="md:hidden space-y-3">
-            {filtered.map((p) => (
+            {pagedItems.map((p) => (
               <li key={p.id} className="bg-white rounded-lg border border-gray-200 p-4 shadow-sm">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
@@ -317,7 +331,7 @@ export function PacientesPage() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-100">
-                {filtered.map((p) => (
+                {pagedItems.map((p) => (
                   <tr key={p.id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-4 py-3 font-medium text-gray-900">{p.nombre}</td>
                     <td className="px-4 py-3 text-gray-600">{p.especie}</td>
@@ -358,6 +372,14 @@ export function PacientesPage() {
               </tbody>
             </table>
           </div>
+
+          <Pagination
+            page={currentPage}
+            totalPages={totalPages}
+            totalItems={totalItems}
+            pageSize={pageSize}
+            onPageChange={setPage}
+          />
         </section>
       )}
 

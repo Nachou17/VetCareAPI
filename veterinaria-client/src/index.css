@@ -33,3 +33,28 @@
   --vetcare-soft: #caf0f8;
   --vetcare-muted: #00b4d8;
 }
+
+/* Reglas universales de cursor sobre elementos interactivos */
+button,
+[role="button"],
+a,
+select,
+input[type="checkbox"],
+input[type="radio"],
+input[type="button"],
+input[type="submit"] {
+  cursor: pointer;
+}
+
+button:disabled,
+button[disabled],
+[disabled],
+[aria-disabled="true"] {
+  cursor: not-allowed !important;
+}
+
+input:not([type="checkbox"]):not([type="radio"]):not([type="button"]):not([type="submit"]),
+textarea,
+[contenteditable="true"] {
+  cursor: text;
+}

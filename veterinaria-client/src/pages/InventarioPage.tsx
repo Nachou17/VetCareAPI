@@ -17,7 +17,9 @@ import {
 } from '../hooks/useInsumos'
 import { InsumoForm } from '../components/inventario/InsumoForm'
 import { ConfirmDialog } from '../components/ui/ConfirmDialog'
+import { Pagination } from '../components/ui/Pagination'
 import { SkeletonRow, SkeletonCard } from '../components/ui/SkeletonRow'
+import { paginateList } from '../utils/pagination'
 import type { Insumo } from '../types'
 import type { InsumoFormValues } from '../schemas/insumoSchema'
 import {
@@ -51,10 +53,12 @@ export function InventarioPage() {
   const [search, setSearch] = useState('')
   const [filterTipo, setFilterTipo] = useState<string>('todos')
   const [onlyLowStock, setOnlyLowStock] = useState<boolean>(false)
+  const [page, setPage] = useState(1)
+  const pageSize = 8
   const deleteButtonRef = useRef<HTMLButtonElement | null>(null)
 
   // Métricas del inventario
-  const totalItems = insumos.length
+  const totalItemsCount = insumos.length
   const lowStockCount = useMemo(() => insumos.filter((i) => i.stockActual <= 10).length, [insumos])
   const criticalStockCount = useMemo(() => insumos.filter((i) => i.stockActual <= 5).length, [insumos])
   const totalStockValor = useMemo(
@@ -68,9 +72,9 @@ export function InventarioPage() {
     return Array.from(set)
   }, [insumos])
 
-  // Filtrado
+  // Filtrado y orden por recencia (ID descendente)
   const filteredInsumos = useMemo(() => {
-    return insumos.filter((i) => {
+    const list = insumos.filter((i) => {
       const matchTipo = filterTipo === 'todos' || i.tipo === filterTipo
       const matchSearch =
         i.nombreProducto.toLowerCase().includes(search.toLowerCase()) ||
@@ -78,11 +82,18 @@ export function InventarioPage() {
       const matchLowStock = !onlyLowStock || i.stockActual <= 10
       return matchTipo && matchSearch && matchLowStock
     })
+    return list.slice().sort((a, b) => b.id - a.id)
   }, [insumos, filterTipo, search, onlyLowStock])
+
+  const { pagedItems, totalPages, totalItems, currentPage } = useMemo(
+    () => paginateList(filteredInsumos, page, pageSize),
+    [filteredInsumos, page, pageSize],
+  )
 
   async function handleCreate(values: InsumoFormValues) {
     await createMutation.mutateAsync(values)
     setMode('list')
+    setPage(1)
   }
 
   async function handleUpdate(values: InsumoFormValues) {
@@ -126,7 +137,7 @@ export function InventarioPage() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="max-w-6xl mx-auto space-y-6">
       {/* Encabezado */}
       <header className="border-b border-gray-200 pb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -160,7 +171,7 @@ export function InventarioPage() {
             </div>
             <div>
               <p className="text-xs text-gray-500 font-medium">Catálogo Total</p>
-              <p className="text-xl font-bold text-gray-900">{totalItems} productos</p>
+              <p className="text-xl font-bold text-gray-900">{totalItemsCount} productos</p>
             </div>
           </div>
 
@@ -229,7 +240,10 @@ export function InventarioPage() {
               type="search"
               placeholder="Buscar insumo por nombre o tipo..."
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => {
+                setSearch(e.target.value)
+                setPage(1)
+              }}
               aria-label="Buscar insumos"
               className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 min-h-[44px]"
             />
@@ -238,7 +252,10 @@ export function InventarioPage() {
           <div className="flex flex-wrap gap-2 items-center">
             <select
               value={filterTipo}
-              onChange={(e) => setFilterTipo(e.target.value)}
+              onChange={(e) => {
+                setFilterTipo(e.target.value)
+                setPage(1)
+              }}
               aria-label="Filtrar por categoría"
               className="border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-700 bg-white focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 min-h-[44px]"
             >
@@ -252,7 +269,10 @@ export function InventarioPage() {
 
             <button
               type="button"
-              onClick={() => setOnlyLowStock(!onlyLowStock)}
+              onClick={() => {
+                setOnlyLowStock(!onlyLowStock)
+                setPage(1)
+              }}
               className={`px-3 py-2 rounded-lg text-sm font-medium border min-h-[44px] transition-colors flex items-center gap-1.5 ${
                 onlyLowStock
                   ? 'bg-amber-100 border-amber-300 text-amber-800'
@@ -311,62 +331,128 @@ export function InventarioPage() {
           )}
 
           {!isLoading && !isError && filteredInsumos.length > 0 && (
-            <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200 text-left text-sm">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th scope="col" className="px-6 py-3 font-semibold text-gray-700">Producto</th>
-                      <th scope="col" className="px-6 py-3 font-semibold text-gray-700">Categoría</th>
-                      <th scope="col" className="px-6 py-3 font-semibold text-gray-700">Stock Actual</th>
-                      <th scope="col" className="px-6 py-3 font-semibold text-gray-700">Precio Unitario</th>
-                      <th scope="col" className="px-6 py-3 font-semibold text-gray-700 text-right">Acciones</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-200 bg-white">
-                    {filteredInsumos.map((i) => (
-                      <tr key={i.id} className="hover:bg-gray-50 transition-colors">
-                        <td className="px-6 py-4 whitespace-nowrap text-gray-900 font-medium">
-                          {i.nombreProducto}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-gray-600">
-                          {i.tipo}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          {getStockBadge(i.stockActual)}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-gray-900 font-semibold">
-                          ${i.precioUnitario.toLocaleString('es-CL')}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-right space-x-2">
-                          {canWrite && (
-                            <button
-                              onClick={() => {
-                                setEditing(i)
-                                setMode('edit')
-                              }}
-                              className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-                              aria-label={`Editar insumo ${i.nombreProducto}`}
-                            >
-                              <Pencil size={16} />
-                            </button>
-                          )}
-                          {canDelete && (
-                            <button
-                              ref={deleteButtonRef}
-                              onClick={() => setToDelete(i)}
-                              className="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
-                              aria-label={`Eliminar insumo ${i.nombreProducto}`}
-                            >
-                              <Trash2 size={16} />
-                            </button>
-                          )}
-                        </td>
+            <div className="space-y-4">
+              {/* ── Vista de Tarjetas para Móviles (< md) ── */}
+              <ul className="md:hidden space-y-3" aria-label="Listado móvil de insumos e inventario">
+                {pagedItems.map((i) => (
+                  <li
+                    key={i.id}
+                    className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm space-y-3"
+                  >
+                    <div className="flex items-start justify-between gap-2 border-b border-gray-100 pb-2">
+                      <div>
+                        <p className="font-bold text-gray-900 text-sm">{i.nombreProducto}</p>
+                        <span className="text-xs text-gray-500">{i.tipo}</span>
+                      </div>
+                      <div>{getStockBadge(i.stockActual)}</div>
+                    </div>
+
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="text-gray-500 font-medium">Precio Unitario:</span>
+                      <span className="text-sm font-bold text-gray-900">${i.precioUnitario.toLocaleString('es-CL')}</span>
+                    </div>
+
+                    <div className="flex items-center justify-end gap-2 pt-1 border-t border-gray-100">
+                      {canWrite && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditing(i)
+                            setMode('edit')
+                          }}
+                          className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg min-h-[36px]"
+                          aria-label={`Editar insumo ${i.nombreProducto}`}
+                        >
+                          <Pencil size={14} aria-hidden="true" />
+                          <span>Editar</span>
+                        </button>
+                      )}
+                      {canDelete && (
+                        <button
+                          type="button"
+                          ref={deleteButtonRef}
+                          onClick={() => setToDelete(i)}
+                          className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-red-700 bg-red-50 hover:bg-red-100 rounded-lg min-h-[36px]"
+                          aria-label={`Eliminar insumo ${i.nombreProducto}`}
+                        >
+                          <Trash2 size={14} aria-hidden="true" />
+                          <span>Eliminar</span>
+                        </button>
+                      )}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+
+              {/* ── Vista de Tabla para Escritorio (≥ md) ── */}
+              <div className="hidden md:block bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200 text-left text-sm">
+                    <thead className="bg-gray-50 text-gray-700">
+                      <tr>
+                        <th scope="col" className="px-4 py-3.5 font-semibold">Producto</th>
+                        <th scope="col" className="px-4 py-3.5 font-semibold">Categoría</th>
+                        <th scope="col" className="px-4 py-3.5 font-semibold">Stock Actual</th>
+                        <th scope="col" className="px-4 py-3.5 font-semibold">Precio Unitario</th>
+                        <th scope="col" className="px-4 py-3.5 font-semibold text-right">Acciones</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100 bg-white">
+                      {pagedItems.map((i) => (
+                        <tr key={i.id} className="hover:bg-gray-50/80 transition-colors">
+                          <td className="px-4 py-3.5 font-medium text-gray-900">
+                            {i.nombreProducto}
+                          </td>
+                          <td className="px-4 py-3.5 text-gray-600">
+                            {i.tipo}
+                          </td>
+                          <td className="px-4 py-3.5 whitespace-nowrap">
+                            {getStockBadge(i.stockActual)}
+                          </td>
+                          <td className="px-4 py-3.5 whitespace-nowrap font-semibold text-gray-900">
+                            ${i.precioUnitario.toLocaleString('es-CL')}
+                          </td>
+                          <td className="px-4 py-3.5 whitespace-nowrap text-right space-x-2">
+                            {canWrite && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setEditing(i)
+                                  setMode('edit')
+                                }}
+                                className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 min-h-[36px] min-w-[36px]"
+                                aria-label={`Editar insumo ${i.nombreProducto}`}
+                              >
+                                <Pencil size={15} aria-hidden="true" />
+                              </button>
+                            )}
+                            {canDelete && (
+                              <button
+                                type="button"
+                                ref={deleteButtonRef}
+                                onClick={() => setToDelete(i)}
+                                className="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500 min-h-[36px] min-w-[36px]"
+                                aria-label={`Eliminar insumo ${i.nombreProducto}`}
+                              >
+                                <Trash2 size={15} aria-hidden="true" />
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
+
+              <Pagination
+                page={currentPage}
+                totalPages={totalPages}
+                totalItems={totalItems}
+                pageSize={pageSize}
+                onPageChange={setPage}
+                className="px-4 py-4"
+              />
             </div>
           )}
         </>

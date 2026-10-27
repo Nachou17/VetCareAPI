@@ -19,7 +19,9 @@ import { usePacientes } from '../hooks/usePacientes'
 import { useCitas } from '../hooks/useCitas'
 import { ConsultaForm } from '../components/consultas/ConsultaForm'
 import { ConfirmDialog } from '../components/ui/ConfirmDialog'
+import { Pagination } from '../components/ui/Pagination'
 import { SkeletonRow, SkeletonCard } from '../components/ui/SkeletonRow'
+import { paginateList } from '../utils/pagination'
 import type { Consulta } from '../types'
 import type { ConsultaFormValues } from '../schemas/consultaSchema'
 import { Plus, Pencil, Trash2, Search, RefreshCw, Stethoscope, FileText, ClipboardList } from 'lucide-react'
@@ -43,19 +45,27 @@ export function ConsultasPage() {
   const [editing, setEditing] = useState<Consulta | undefined>()
   const [toDelete, setToDelete] = useState<Consulta | null>(null)
   const [search, setSearch] = useState('')
+  const [page, setPage] = useState(1)
+  const pageSize = 9
   const deleteButtonRef = useRef<HTMLButtonElement | null>(null)
 
   const pacienteMap = useMemo(() => new Map(pacientes.map((p) => [p.id, p])), [pacientes])
 
   const filteredConsultas = useMemo(() => {
-    return consultas.filter((c) => {
+    const list = consultas.filter((c) => {
       const pac = pacienteMap.get(c.pacienteId)?.nombre.toLowerCase() ?? ''
       const mot = c.motivo.toLowerCase()
       const diag = (c.diagnostico ?? '').toLowerCase()
       const q = search.toLowerCase()
       return pac.includes(q) || mot.includes(q) || diag.includes(q)
     })
+    return list.slice().sort((a, b) => b.id - a.id)
   }, [consultas, search, pacienteMap])
+
+  const { pagedItems, totalPages, totalItems, currentPage } = useMemo(
+    () => paginateList(filteredConsultas, page, pageSize),
+    [filteredConsultas, page, pageSize],
+  )
 
   async function handleCreate(values: ConsultaFormValues) {
     await createMutation.mutateAsync({
@@ -65,6 +75,7 @@ export function ConsultasPage() {
       diagnostico: values.diagnostico || undefined,
     })
     setMode('list')
+    setPage(1)
   }
 
   async function handleUpdate(values: ConsultaFormValues) {
@@ -94,7 +105,7 @@ export function ConsultasPage() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="max-w-6xl mx-auto space-y-6">
       {/* Encabezado */}
       <header className="border-b border-gray-200 pb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -154,7 +165,10 @@ export function ConsultasPage() {
               type="search"
               placeholder="Buscar por paciente, motivo o diagnóstico..."
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => {
+                setSearch(e.target.value)
+                setPage(1)
+              }}
               aria-label="Buscar consultas"
               className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 min-h-[44px]"
             />
@@ -205,79 +219,89 @@ export function ConsultasPage() {
           )}
 
           {!isLoading && !isError && filteredConsultas.length > 0 && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredConsultas.map((c) => {
-                const pac = pacienteMap.get(c.pacienteId)
-                return (
-                  <article
-                    key={c.id}
-                    className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between"
-                  >
-                    <div>
-                      <div className="flex items-center justify-between mb-3">
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-700">
-                          <ClipboardList size={12} /> Consulta #{c.id}
-                        </span>
-                        {c.citaId && (
-                          <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded">
-                            Cita #{c.citaId}
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {pagedItems.map((c) => {
+                  const pac = pacienteMap.get(c.pacienteId)
+                  return (
+                    <article
+                      key={c.id}
+                      className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between"
+                    >
+                      <div>
+                        <div className="flex items-center justify-between mb-3">
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-700">
+                            <ClipboardList size={12} /> Consulta #{c.id}
                           </span>
-                        )}
-                      </div>
-
-                      <h3 className="text-base font-bold text-gray-900 mb-1">
-                        {pac ? `${pac.nombre} (${pac.especie})` : `Paciente #${c.pacienteId}`}
-                      </h3>
-
-                      <div className="mt-3 space-y-2">
-                        <div>
-                          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Motivo:</p>
-                          <p className="text-sm text-gray-800 font-medium">{c.motivo}</p>
+                          {c.citaId && (
+                            <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded">
+                              Cita #{c.citaId}
+                            </span>
+                          )}
                         </div>
 
-                        {c.diagnostico && (
-                          <div>
-                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Diagnóstico:</p>
-                            <p className="text-sm text-gray-700 bg-gray-50 p-2.5 rounded-lg border border-gray-100">
-                              {c.diagnostico}
-                            </p>
-                          </div>
-                        )}
-                      </div>
-                    </div>
+                        <h3 className="text-base font-bold text-gray-900 mb-1">
+                          {pac ? `${pac.nombre} (${pac.especie})` : `Paciente #${c.pacienteId}`}
+                        </h3>
 
-                    <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between">
-                      <span className="text-xs text-gray-400 flex items-center gap-1">
-                        <FileText size={14} /> Ficha Clínica
-                      </span>
-                      <div className="flex gap-1">
-                        {canWrite && (
-                          <button
-                            onClick={() => {
-                              setEditing(c)
-                              setMode('edit')
-                            }}
-                            className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-                            aria-label={`Editar consulta #${c.id}`}
-                          >
-                            <Pencil size={16} />
-                          </button>
-                        )}
-                        {canDelete && (
-                          <button
-                            ref={deleteButtonRef}
-                            onClick={() => setToDelete(c)}
-                            className="p-1.5 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
-                            aria-label={`Eliminar consulta #${c.id}`}
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        )}
+                        <div className="mt-3 space-y-2">
+                          <div>
+                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Motivo:</p>
+                            <p className="text-sm text-gray-800 font-medium">{c.motivo}</p>
+                          </div>
+
+                          {c.diagnostico && (
+                            <div>
+                              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Diagnóstico:</p>
+                              <p className="text-sm text-gray-700 bg-gray-50 p-2.5 rounded-lg border border-gray-100">
+                                {c.diagnostico}
+                              </p>
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  </article>
-                )
-              })}
+
+                      <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between">
+                        <span className="text-xs text-gray-400 flex items-center gap-1">
+                          <FileText size={14} /> Ficha Clínica
+                        </span>
+                        <div className="flex gap-1">
+                          {canWrite && (
+                            <button
+                              onClick={() => {
+                                setEditing(c)
+                                setMode('edit')
+                              }}
+                              className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                              aria-label={`Editar consulta #${c.id}`}
+                            >
+                              <Pencil size={16} />
+                            </button>
+                          )}
+                          {canDelete && (
+                            <button
+                              ref={deleteButtonRef}
+                              onClick={() => setToDelete(c)}
+                              className="p-1.5 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
+                              aria-label={`Eliminar consulta #${c.id}`}
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </article>
+                  )
+                })}
+              </div>
+
+              <Pagination
+                page={currentPage}
+                totalPages={totalPages}
+                totalItems={totalItems}
+                pageSize={pageSize}
+                onPageChange={setPage}
+              />
             </div>
           )}
         </>

@@ -51,6 +51,11 @@ namespace VeterinariaAPI.Data
                 var vetRol = await context.Roles.FirstOrDefaultAsync(r => r.Nombre == "Veterinario") ?? await context.Roles.FirstAsync();
                 var recepRol = await context.Roles.FirstOrDefaultAsync(r => r.Nombre == "Recepcionista") ?? await context.Roles.FirstAsync();
 
+                // Contraseñas de cuentas demo configurables de forma local (variables de entorno o configuración)
+                var adminPass = config["SeedDemoPasswords:Admin"] ?? config["SeedDemoPassword"] ?? "Admin123!";
+                var vetPass = config["SeedDemoPasswords:Vet"] ?? "Vet123!";
+                var recepPass = config["SeedDemoPasswords:Recep"] ?? "Recep123!";
+
                 // 2. USUARIOS (solo crea cuentas iniciales si no existen; nunca sobreescribe contraseñas existentes)
                 var adminUser = await context.Usuarios.FirstOrDefaultAsync(u => u.Email == "admin@veterinaria.com");
                 if (adminUser == null)
@@ -61,7 +66,7 @@ namespace VeterinariaAPI.Data
                         RolId = adminRol.Id,
                         NombreCompleto = "Dr. Carlos Mendoza (Admin)",
                         Email = "admin@veterinaria.com",
-                        PasswordHash = BCrypt.Net.BCrypt.HashPassword("123456")
+                        PasswordHash = BCrypt.Net.BCrypt.HashPassword(adminPass)
                     };
                     await context.Usuarios.AddAsync(adminUser);
                     await context.SaveChangesAsync();
@@ -76,7 +81,7 @@ namespace VeterinariaAPI.Data
                         RolId = vetRol.Id,
                         NombreCompleto = "Dra. Valentina Ríos (Veterinaria)",
                         Email = "vet@veterinaria.com",
-                        PasswordHash = BCrypt.Net.BCrypt.HashPassword("123456")
+                        PasswordHash = BCrypt.Net.BCrypt.HashPassword(vetPass)
                     };
                     await context.Usuarios.AddAsync(vetUser);
                     await context.SaveChangesAsync();
@@ -91,7 +96,7 @@ namespace VeterinariaAPI.Data
                         RolId = recepRol.Id,
                         NombreCompleto = "Martín Soto (Recepción)",
                         Email = "recepcion@veterinaria.com",
-                        PasswordHash = BCrypt.Net.BCrypt.HashPassword("123456")
+                        PasswordHash = BCrypt.Net.BCrypt.HashPassword(recepPass)
                     };
                     await context.Usuarios.AddAsync(recepUser);
                     await context.SaveChangesAsync();
@@ -400,6 +405,68 @@ namespace VeterinariaAPI.Data
             {
                 logger.LogError(ex, "❌ [DbSeeder] Ocurrió un error al ejecutar el sembrador de base de datos.");
             }
+        }
+
+        /// <summary>
+        /// Restablece los hashes de contraseña de las cuentas de demostración existentes
+        /// y asegura la correspondencia con sus roles respectivos.
+        /// Solo debe ejecutarse manualmente en entorno Development mediante la configuración
+        /// ResetDemoPasswords: true. Nunca se ejecuta automáticamente en cada inicio.
+        /// </summary>
+        public static async Task ResetDemoPasswordsAsync(IServiceProvider serviceProvider)
+        {
+            using var scope = serviceProvider.CreateScope();
+            var context = scope.ServiceProvider.GetRequiredService<VeterinariodbContext>();
+            var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+            var config = scope.ServiceProvider.GetRequiredService<IConfiguration>();
+
+            logger.LogWarning("⚠️  [DbSeeder] ResetDemoPasswords activado. Actualizando hashes y roles de cuentas demo...");
+
+            if (!await context.Database.CanConnectAsync())
+            {
+                logger.LogError("❌ [DbSeeder] No se pudo conectar a la base de datos. Se cancela el restablecimiento.");
+                return;
+            }
+
+            var adminRol = await context.Roles.FirstOrDefaultAsync(r => r.Nombre == "Administrador");
+            var vetRol = await context.Roles.FirstOrDefaultAsync(r => r.Nombre == "Veterinario");
+            var recepRol = await context.Roles.FirstOrDefaultAsync(r => r.Nombre == "Recepcionista");
+
+            var adminPass = config["SeedDemoPasswords:Admin"] ?? config["SeedDemoPassword"] ?? "Admin123!";
+            var vetPass   = config["SeedDemoPasswords:Vet"]   ?? "Vet123!";
+            var recepPass = config["SeedDemoPasswords:Recep"] ?? "Recep123!";
+
+            var demoAccounts = new[]
+            {
+                ("admin@veterinaria.com",     adminPass, adminRol?.Id),
+                ("vet@veterinaria.com",       vetPass,   vetRol?.Id),
+                ("recepcion@veterinaria.com", recepPass, recepRol?.Id),
+            };
+
+            int updated = 0;
+            foreach (var (email, password, expectedRolId) in demoAccounts)
+            {
+                var user = await context.Usuarios.FirstOrDefaultAsync(u => u.Email == email);
+                if (user is null)
+                {
+                    logger.LogWarning("  -> Cuenta '{Email}' no encontrada en la base de datos, se omite.", email);
+                    continue;
+                }
+
+                if (expectedRolId.HasValue && user.RolId != expectedRolId.Value)
+                {
+                    user.RolId = expectedRolId.Value;
+                    logger.LogInformation("  -> Rol sincronizado a Id {RolId} para '{Email}'.", expectedRolId.Value, email);
+                }
+
+                user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(password);
+                updated++;
+                logger.LogInformation("  -> Hash actualizado para '{Email}'.", email);
+            }
+
+            await context.SaveChangesAsync();
+            logger.LogWarning("✅ [DbSeeder] Restablecimiento completado: {Count} cuenta(s) actualizadas con sus roles. " +
+                "Desactiva 'ResetDemoPasswords' antes de continuar.", updated);
         }
     }
 }

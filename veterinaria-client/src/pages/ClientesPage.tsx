@@ -24,7 +24,9 @@ import {
 } from '../hooks/useClientes'
 import { ClienteForm } from '../components/clientes/ClienteForm'
 import { ConfirmDialog } from '../components/ui/ConfirmDialog'
+import { Pagination } from '../components/ui/Pagination'
 import { SkeletonRow, SkeletonCard } from '../components/ui/SkeletonRow'
+import { paginateList } from '../utils/pagination'
 import type { Cliente } from '../types'
 import type { ClienteFormValues } from '../schemas/clienteSchema'
 import { Plus, Pencil, Trash2, Search, RefreshCw, Users, Eye, ArrowLeft } from 'lucide-react'
@@ -46,24 +48,33 @@ export function ClientesPage() {
   const [editing, setEditing] = useState<Cliente | undefined>()
   const [toDelete, setToDelete] = useState<Cliente | null>(null)
   const [search, setSearch] = useState('')
+  const [page, setPage] = useState(1)
+  const pageSize = 8
   const deleteButtonRef = useRef<HTMLButtonElement | null>(null)
 
-  // ── Filtro en tiempo real ─────────────────────────────────
+  // ── Filtro en tiempo real y orden de recencia ─────────────
   const filtered = useMemo(() => {
     if (!clientes) return []
-    const q = search.toLowerCase()
-    return clientes.filter(
+    const q = search.toLowerCase().trim()
+    const list = clientes.filter(
       (c) =>
         c.nombreCompleto.toLowerCase().includes(q) ||
         c.documentoIdentidad.toLowerCase().includes(q) ||
         (c.email ?? '').toLowerCase().includes(q),
     )
+    return list.slice().sort((a, b) => b.id - a.id)
   }, [clientes, search])
+
+  const { pagedItems, totalPages, totalItems, currentPage } = useMemo(
+    () => paginateList(filtered, page, pageSize),
+    [filtered, page, pageSize],
+  )
 
   // ── Handlers ─────────────────────────────────────────────
   async function handleCreate(values: ClienteFormValues) {
     await createMutation.mutateAsync(values)
     setMode('list')
+    setPage(1)
   }
 
   async function handleUpdate(values: ClienteFormValues) {
@@ -135,7 +146,7 @@ export function ClientesPage() {
 
   // ── Vista de lista ────────────────────────────────────────
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="max-w-6xl mx-auto space-y-6">
       {/* Encabezado */}
       <header className="border-b border-gray-200 pb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -183,7 +194,10 @@ export function ClientesPage() {
           type="search"
           placeholder="Buscar por nombre, documento o correo…"
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e) => {
+            setSearch(e.target.value)
+            setPage(1)
+          }}
           className="w-full pl-9 pr-4 py-2.5 min-h-[44px] border border-gray-300 rounded-lg text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
           aria-controls="clientes-list"
         />
@@ -252,7 +266,7 @@ export function ClientesPage() {
         <section aria-label="Lista de clientes" id="clientes-list">
           {/* ── Vista de tarjetas (móvil < md) ─────────────────── */}
           <ul className="md:hidden space-y-3">
-            {filtered.map((c) => (
+            {pagedItems.map((c) => (
               <li key={c.id} className="bg-white rounded-lg border border-gray-200 p-4 shadow-sm">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
@@ -310,7 +324,7 @@ export function ClientesPage() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-100">
-                {filtered.map((c) => (
+                {pagedItems.map((c) => (
                   <tr key={c.id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-4 py-3 font-medium text-gray-900">{c.nombreCompleto}</td>
                     <td className="px-4 py-3 text-gray-600">{c.documentoIdentidad}</td>
@@ -350,6 +364,14 @@ export function ClientesPage() {
               </tbody>
             </table>
           </div>
+
+          <Pagination
+            page={currentPage}
+            totalPages={totalPages}
+            totalItems={totalItems}
+            pageSize={pageSize}
+            onPageChange={setPage}
+          />
         </section>
       )}
 

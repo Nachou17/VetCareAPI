@@ -18,4 +18,13 @@ export const usuarioService = {
     const { data } = await apiClient.post<UsuarioAuth>(`${BASE}/register`, dto)
     return data
   },
+
+  async update(id: number, dto: Partial<RegisterRequest>): Promise<UsuarioAuth> {
+    const { data } = await apiClient.put<UsuarioAuth>(`${BASE}/${id}`, dto)
+    return data
+  },
+
+  async delete(id: number): Promise<void> {
+    await apiClient.delete(`${BASE}/${id}`)
+  },
 }

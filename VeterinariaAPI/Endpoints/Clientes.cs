@@ -1,4 +1,6 @@
 using System.ComponentModel.DataAnnotations;
+using Microsoft.EntityFrameworkCore;
+using VeterinariaAPI.Data;
 using VeterinariaAPI.Extensions;
 using VeterinariaAPI.Models;
 using VeterinariaAPI.Repositories;
@@ -11,11 +13,39 @@ namespace VeterinariaAPI.Endpoints
         {
             var clientes = app.MapGroup("/api/v1/clientes").WithTags("Clientes (v1)");
 
-            // API para listar clientes
-            clientes.MapGet("/", async (IRepository<Cliente> repo) =>
+            // API para listar clientes con paginación y orden por recencia (Id descendente)
+            clientes.MapGet("/", async (int? page, int? pageSize, string? search, VeterinariodbContext db) =>
             {
-                var listaClientes = await repo.ObtenerTodosAsync();
-                return Results.Ok(listaClientes);
+                var query = db.Clientes.AsNoTracking().AsQueryable();
+
+                if (!string.IsNullOrWhiteSpace(search))
+                {
+                    var q = search.Trim().ToLower();
+                    query = query.Where(c => c.NombreCompleto.ToLower().Contains(q) ||
+                                             c.DocumentoIdentidad.ToLower().Contains(q) ||
+                                             (c.Email != null && c.Email.ToLower().Contains(q)));
+                }
+
+                // Criterio de recencia: ID descendente
+                query = query.OrderByDescending(c => c.Id);
+
+                if (page.HasValue)
+                {
+                    var p = Math.Max(1, page.Value);
+                    var ps = Math.Clamp(pageSize ?? 10, 1, 100);
+                    var total = await query.CountAsync();
+                    var items = await query.Skip((p - 1) * ps).Take(ps).ToListAsync();
+
+                    return Results.Ok(new PagedResult<Cliente>
+                    {
+                        Items = items,
+                        Page = p,
+                        PageSize = ps,
+                        TotalItems = total
+                    });
+                }
+
+                return Results.Ok(await query.ToListAsync());
             }).RequireAuthorization(policy => policy.RequireRole("Administrador", "Veterinario", "Recepcionista"));
 
             // API para obtener un cliente por ID
@@ -67,7 +97,7 @@ namespace VeterinariaAPI.Endpoints
 
                 await repo.GuardarCambiosAsync();
                 return Results.Ok(clienteExistente);
-            }).RequireAuthorization(policy => policy.RequireRole("Administrador"));
+            }).RequireAuthorization(policy => policy.RequireRole("Administrador", "Veterinario"));
 
             // API para eliminar cliente
             clientes.MapDelete("/{id:int}", async (int id, IRepository<Cliente> repo) =>

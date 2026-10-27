@@ -4,7 +4,7 @@
 // ======================================================
 
 import { http, HttpResponse } from 'msw'
-import type { Cliente, Paciente, ClienteCreateDto, PacienteCreateDto, LoginRequest } from '../../types'
+import type { Cliente, Paciente, ClienteCreateDto, PacienteCreateDto, LoginRequest, UsuarioAuth, RegisterRequest } from '../../types'
 
 const BASE_URL = import.meta.env.VITE_API_URL || 'https://localhost:7189/api/v1'
 
@@ -21,6 +21,19 @@ export function createMockJwt(id: number, nombre: string, email: string, rol: st
   )
   return `${header}.${payload}.mock-signature`
 }
+
+export const initialRoles = [
+  { id: 1, nombre: 'Administrador', permisosEscritura: true },
+  { id: 2, nombre: 'Veterinario', permisosEscritura: true },
+  { id: 3, nombre: 'Recepcionista', permisosEscritura: false },
+]
+
+export const initialUsuarios: UsuarioAuth[] = [
+  { id: 1, nombreCompleto: 'Dr. Carlos Mendoza (Admin)', email: 'admin@veterinaria.com', rol: 'Administrador' },
+  { id: 2, nombreCompleto: 'Dra. Valentina Ríos (Veterinaria)', email: 'vet@veterinaria.com', rol: 'Veterinario' },
+  { id: 3, nombreCompleto: 'Martín Soto (Recepción)', email: 'recepcion@veterinaria.com', rol: 'Recepcionista' },
+  { id: 4, nombreCompleto: 'Usuario Con Citas', email: 'concitas@veterinaria.com', rol: 'Veterinario' },
+]
 
 export const initialClientes: Cliente[] = [
   {
@@ -62,10 +75,12 @@ export const initialPacientes: Paciente[] = [
 
 let mockClientes = [...initialClientes]
 let mockPacientes = [...initialPacientes]
+let mockUsuarios = [...initialUsuarios]
 
 export function resetMockData() {
   mockClientes = [...initialClientes]
   mockPacientes = [...initialPacientes]
+  mockUsuarios = [...initialUsuarios]
 }
 
 export const handlers = [
@@ -185,4 +200,111 @@ export const handlers = [
 
   // Regex fallback para Pacientes
   http.get(/\/api\/v1\/pacientes$/, () => HttpResponse.json(mockPacientes)),
+
+  // ── 4. Roles ──────────────────────────────────────────────
+  http.get(`${BASE_URL}/roles`, () => {
+    return HttpResponse.json(initialRoles)
+  }),
+  http.get(/\/api\/v1\/roles$/, () => HttpResponse.json(initialRoles)),
+
+  // ── 5. Usuarios ───────────────────────────────────────────
+  http.get(`${BASE_URL}/usuarios`, () => {
+    return HttpResponse.json(mockUsuarios)
+  }),
+  http.get(/\/api\/v1\/usuarios$/, () => HttpResponse.json(mockUsuarios)),
+
+  http.post(`${BASE_URL}/usuarios/register`, async ({ request }) => {
+    const dto = (await request.json()) as RegisterRequest
+    if (dto.rolId === 1) {
+      return HttpResponse.json(
+        { status: 400, message: 'No se permite registrar nuevos usuarios con el rol Administrador.' },
+        { status: 400 },
+      )
+    }
+    const rolNombre = initialRoles.find((r) => r.id === dto.rolId)?.nombre ?? 'Usuario'
+    const nuevo: UsuarioAuth = {
+      id: mockUsuarios.length + 1,
+      nombreCompleto: dto.nombreCompleto,
+      email: dto.email,
+      rol: rolNombre,
+    }
+    mockUsuarios.push(nuevo)
+    return HttpResponse.json(nuevo, { status: 201 })
+  }),
+  http.post(/\/api\/v1\/usuarios\/register$/, async ({ request }) => {
+    const dto = (await request.json()) as RegisterRequest
+    if (dto.rolId === 1) {
+      return HttpResponse.json(
+        { status: 400, message: 'No se permite registrar nuevos usuarios con el rol Administrador.' },
+        { status: 400 },
+      )
+    }
+    const rolNombre = initialRoles.find((r) => r.id === dto.rolId)?.nombre ?? 'Usuario'
+    const nuevo: UsuarioAuth = {
+      id: mockUsuarios.length + 1,
+      nombreCompleto: dto.nombreCompleto,
+      email: dto.email,
+      rol: rolNombre,
+    }
+    mockUsuarios.push(nuevo)
+    return HttpResponse.json(nuevo, { status: 201 })
+  }),
+
+  http.put(`${BASE_URL}/usuarios/:id`, async ({ request }) => {
+    const dto = (await request.json()) as Partial<RegisterRequest>
+    if (dto.rolId === 1) {
+      return HttpResponse.json(
+        { status: 400, message: 'No se permite asignar el rol Administrador a un usuario.' },
+        { status: 400 },
+      )
+    }
+    return HttpResponse.json({ id: 2, rol: 'Veterinario' })
+  }),
+
+  http.delete(`${BASE_URL}/usuarios/:id`, ({ params }) => {
+    const id = Number(params.id)
+    if (id === 1) {
+      return HttpResponse.json(
+        { status: 400, message: 'No puedes eliminar tu propia cuenta mientras estás autenticado.' },
+        { status: 400 },
+      )
+    }
+    if (id === 4) {
+      return HttpResponse.json(
+        {
+          status: 409,
+          message: 'No se puede eliminar el usuario seleccionado porque tiene registros asociados (como citas o atenciones clínicas). Conserve los registros o reasígnelos antes de eliminar.',
+        },
+        { status: 409 },
+      )
+    }
+    const idx = mockUsuarios.findIndex((u) => u.id === id)
+    if (idx !== -1) {
+      mockUsuarios.splice(idx, 1)
+    }
+    return new HttpResponse(null, { status: 204 })
+  }),
+  http.delete(/\/api\/v1\/usuarios\/\d+$/, ({ request }) => {
+    const id = Number(request.url.split('/').pop())
+    if (id === 1) {
+      return HttpResponse.json(
+        { status: 400, message: 'No puedes eliminar tu propia cuenta mientras estás autenticado.' },
+        { status: 400 },
+      )
+    }
+    if (id === 4) {
+      return HttpResponse.json(
+        {
+          status: 409,
+          message: 'No se puede eliminar el usuario seleccionado porque tiene registros asociados (como citas o atenciones clínicas). Conserve los registros o reasígnelos antes de eliminar.',
+        },
+        { status: 409 },
+      )
+    }
+    const idx = mockUsuarios.findIndex((u) => u.id === id)
+    if (idx !== -1) {
+      mockUsuarios.splice(idx, 1)
+    }
+    return new HttpResponse(null, { status: 204 })
+  }),
 ]
